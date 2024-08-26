@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Rewinding System</title>
+    <!-- Include Highlight.js CSS for Visual Studio theme -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/vs2015.min.css">
+    <!-- Include Highlight.js JavaScript library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        /* Inline code styling */
+        code {
+            background-color: #f4f4f4;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 140%;
+            color: #d14;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Serialization in Unreal Engine</h1>
+    </header>
+    <div class="container">
+        <section>
+            <h2>1. What is Serialization?</h2>
+            <p>Serialization is the process of converting an object or data structure into a format that can be easily stored or transmitted, and subsequently reconstructed. In Unreal Engine, serialization is often used for:</p>
+            <ul>
+                <li><strong>Saving and loading game states:</strong> Storing the state of a game to disk and reloading it later.</li>
+                <li><strong>Network replication:</strong> Transmitting object states between server and clients.</li>
+                <li><strong>Custom data storage:</strong> Managing custom binary or text formats for configuration files, modding, etc.</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>2. UE4/UE5 Serialization System</h2>
+            <p>Unreal Engine uses several classes and methods for serialization, built around Unreal's reflection system. The core class for serialization is <code>FArchive</code>, which provides the basic interface for reading and writing data.</p>
+            
+            <h3>Key Classes and Concepts:</h3>
+            <ul>
+                <li><code>FArchive</code>: The base class for serialization, providing fundamental methods like <code>&lt;&lt;</code> (for serializing individual properties) and <code>Serialize</code>.</li>
+                <li><code>FMemoryWriter / FMemoryReader</code>: Derived from <code>FArchive</code>, these classes are used to serialize to and from memory buffers.</li>
+                <li><code>FObjectAndNameAsStringProxyArchive</code>: A specialized archive for serializing UObjects with reference tracking.</li>
+                <li><code>FBufferArchive</code>: A simple implementation of <code>FArchive</code> that writes to an array of bytes, useful for custom serialization.</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>3. Basic Serialization Example</h2>
+            <p>Let’s start with a simple example of serializing a custom struct to a binary format.</p>
+            <div class="example">
+                <pre><code>// Define a simple struct
+USTRUCT(BlueprintType)
+struct FMyStruct
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    int32 MyInt;
+
+    UPROPERTY()
+    float MyFloat;
+
+    UPROPERTY()
+    FString MyString;
+
+    // Implement custom serialization
+    friend FArchive& operator&lt;&lt;(FArchive& Ar, FMyStruct& MyStruct)
+    {
+        Ar &lt;&lt; MyStruct.MyInt;
+        Ar &lt;&lt; MyStruct.MyFloat;
+        Ar &lt;&lt; MyStruct.MyString;
+        return Ar;
+    }
+};
+
+// Serializing the struct to a file
+void SaveStructToFile(const FString& FilePath, const FMyStruct& Data)
+{
+    // Create a binary archive writer
+    FBufferArchive Archive;
+    Archive &lt;&lt; const_cast&lt;FMyStruct&gt;(Data);
+
+    // Write to disk
+    if (FFileHelper::SaveArrayToFile(Archive, *FilePath))
+    {
+        UE_LOG(LogTemp, Log, TEXT("Saved successfully!"));
+    }
+    Archive.FlushCache();
+    Archive.Empty();
+}
+
+// Deserializing the struct from a file
+bool LoadStructFromFile(const FString& FilePath, FMyStruct& Data)
+{
+    TArray&lt;uint8&gt; BinaryArray;
+    if (FFileHelper::LoadFileToArray(BinaryArray, *FilePath))
+    {
+        FMemoryReader FromBinary = FMemoryReader(BinaryArray, true); // true: Free binary array after read
+        FromBinary.Seek(0);
+        FromBinary &lt;&lt; Data;
+        FromBinary.FlushCache();
+        BinaryArray.Empty();
+        return true;
+    }
+    return false;
+}
+</code></pre>
+            </div>
+        </section>
+        
+        <section>
+            <h2>4. Advanced Serialization Techniques</h2>
+            <h3>4.1. Serializing UObjects</h3>
+            <p>For UObjects, Unreal’s <code>Serialize</code> function is used. This method is automatically called for UObjects when you serialize them using an archive. You can override this function in your custom classes to handle specific serialization logic.</p>
+            <div class="example">
+                <pre><code>class UMyObject : public UObject
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY()
+    int32 MyInt;
+
+    UPROPERTY()
+    FString MyString;
+
+    virtual void Serialize(FArchive& Ar) override
+    {
+        Super::Serialize(Ar);
+
+        Ar &lt;&lt; MyInt;
+        Ar &lt;&lt; MyString;
+    }
+};
+</code></pre>
+            </div>
+            
+            <h3>4.2. Custom Serialization Formats</h3>
+            <p>If you need to serialize to a custom format (e.g., XML, JSON, or a proprietary binary format), you’ll use a combination of <code>FArchive</code> or <code>FStructuredArchive</code>, custom parsers, and serialization functions.</p>
+            
+            <p><strong>Example: JSON Serialization</strong></p>
+            <div class="example">
+                <pre><code>// JSON Serialization Example
+void SerializeToJson(const FString& FilePath, const FMyStruct& Data)
+{
+    TSharedPtr&lt;FJsonObject&gt; JsonObject = MakeShareable(new FJsonObject);
+    JsonObject-&gt;SetNumberField(TEXT("MyInt"), Data.MyInt);
+    JsonObject-&gt;SetNumberField(TEXT("MyFloat"), Data.MyFloat);
+    JsonObject-&gt;SetStringField(TEXT("MyString"), Data.MyString);
+
+    FString OutputString;
+    TSharedRef&lt;TJsonWriter&lt;&gt;&gt; Writer = TJsonWriterFactory&lt;&gt;::Create(&OutputString);
+    FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+
+    FFileHelper::SaveStringToFile(OutputString, *FilePath);
+}
+
+bool DeserializeFromJson(const FString& FilePath, FMyStruct& Data)
+{
+    FString JsonString;
+    if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+    {
+        TSharedRef&lt;TJsonReader&lt;&gt;&gt; Reader = TJsonReaderFactory&lt;&gt;::Create(JsonString);
+        TSharedPtr&lt;FJsonObject&gt; JsonObject;
+        if (FJsonSerializer::Deserialize(Reader, JsonObject) &amp;&amp; JsonObject.IsValid())
+        {
+            Data.MyInt = JsonObject-&gt;GetIntegerField(TEXT("MyInt"));
+            Data.MyFloat = JsonObject-&gt;GetNumberField(TEXT("MyFloat"));
+            Data.MyString = JsonObject-&gt;GetStringField(TEXT("MyString"));
+            return true;
+        }
+    }
+    return false;
+}
+</code></pre>
+            </div>
+        </section>
+        
+        <section>
+            <h2>5. Best Practices</h2>
+            <ul>
+                <li><strong>Use UE's Reflection System:</strong> Whenever possible, leverage Unreal’s reflection system (<code>UCLASS</code>, <code>USTRUCT</code>, etc.) as it simplifies serialization and ensures compatibility with UE features like garbage collection and network replication.</li>
+                <li><strong>Versioning:</strong> Always consider future-proofing your serialized data. Add versioning information to your serialized formats to handle changes gracefully.</li>
+                <li><strong>Minimize Data:</strong> Serialize only what’s necessary. Large data sets can increase load times and memory usage, so be judicious about what you serialize.</li>
+                <li><strong>Error Handling:</strong> Implement robust error handling, especially for file operations. Always check the success of serialization operations and manage corrupted or missing data gracefully.</li>
+                <li><strong>Custom Archive Implementation:</strong> If you need specific control over how data is serialized, consider creating your custom archive class by deriving from <code>FArchive</code>.</li>
+            </ul>
+        </section>
+        
+        <section>
+            <h2>6. Conclusion</h2>
+            <p>Serialization in Unreal Engine is a powerful tool that allows developers to save and restore game states, transmit data over the network, and more. By leveraging Unreal's serialization system and following best practices, you can create efficient and maintainable systems for managing your game's data. Always keep in mind the specific needs of your project when choosing the serialization approach, whether it's binary, JSON, or a custom format.</p>
+        </section>
+    </div>
+	
+	<script>
+        // Initialize Highlight.js
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Rewinding System</title>
+    <!-- Include Highlight.js CSS for Visual Studio theme -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/vs2015.min.css">
+    <!-- Include Highlight.js JavaScript library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        /* Inline code styling */
+        code {
+            background-color: #f4f4f4;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 140%;
+            color: #d14;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Rewinding in Unreal Engine</h1>
+    <p>Server rewinding is a technique used in multiplayer games to handle issues related to latency and network lag. By "rewinding" the game state to a specific point in time, the server can process client inputs as if they were received instantly, ensuring fairness in gameplay. This is particularly important in games where precise timing and actions are crucial, such as first-person shooters.</p>
+
+    <h2>Concept Overview</h2>
+    <p>In a multiplayer scenario, consider two players:</p>
+    <ul>
+        <li><strong>Player A (Low Latency):</strong> Sends input to the server with minimal delay.</li>
+        <li><strong>Player B (High Latency):</strong> Experiences a delay in sending their input to the server.</li>
+    </ul>
+    <p>If both players perform an action simultaneously, Player A's action may be processed first due to lower latency. Server rewinding helps by considering the state of the game at the time Player B's action was made, even if it arrived later, thus ensuring both players' actions are evaluated fairly.</p>
+
+    <h2>Steps to Implement Server Rewinding</h2>
+
+    <h3>1. Capture and Store Game State</h3>
+    <p>To rewind the game state, you need to periodically capture and store the state of the game, including player positions and other critical data.</p>
+    <pre><code class="cpp">
+struct FPlayerSnapshot {
+    FVector Location;
+    FRotator Rotation;
+    float Timestamp;
+};
+
+TArray<FPlayerSnapshot> PlayerSnapshots;
+    </code></pre>
+    <p>Snapshots are typically taken at intervals corresponding to the server's tick rate. This ensures a balance between accuracy and performance.</p>
+
+    <h3>2. Rewind Logic</h3>
+    <p>When a client input is received, calculate the time at which it should be processed based on the latency. Locate the snapshot closest to this time to rewind the game state appropriately.</p>
+    <pre><code class="cpp">
+FPlayerSnapshot GetSnapshotAtTime(float InputTime) {
+    for (int i = PlayerSnapshots.Num() - 1; i >= 0; i--) {
+        if (PlayerSnapshots[i].Timestamp <= InputTime) {
+            return PlayerSnapshots[i];
+        }
+    }
+    return PlayerSnapshots.Last(); // Return the latest snapshot if no match is found
+}
+    </code></pre>
+
+    <h3>3. Rewind and Reconcile</h3>
+    <p>Rewind the game state to the snapshot time, process the input, and then restore the game state to the current time. This involves temporarily setting the game state to the values recorded in the snapshot and processing actions as if they occurred at that time.</p>
+    <pre><code class="cpp">
+void AMyCharacter::ServerFire_Implementation(float ClientTimeStamp, FVector_NetQuantize HitLocation) {
+    // Calculate latency
+    float CurrentServerTime = GetWorld()->GetTimeSeconds();
+    float Latency = CurrentServerTime - ClientTimeStamp;
+
+    // Find the corresponding snapshot
+    float RewindTime = CurrentServerTime - Latency;
+    FPlayerSnapshot Snapshot = GetSnapshotAtTime(RewindTime);
+
+    // Rewind to snapshot state
+    FVector OriginalLocation = GetActorLocation();
+    SetActorLocation(Snapshot.Location);
+    
+    // Simulate the hit in the past
+    if (CheckHit(HitLocation)) {
+        // Handle hit
+    }
+
+    // Reconcile back to current state
+    SetActorLocation(OriginalLocation);
+}
+
+bool AMyCharacter::CheckHit(FVector_NetQuantize HitLocation) {
+    // Perform hit detection logic
+    return true; // Example hit detection
+}
+    </code></pre>
+
+    <h3>4. Handling Edge Cases</h3>
+    <ul>
+        <li><strong>Prediction Errors:</strong> Ensure client-side predictions are accurate. Implement techniques to minimize discrepancies between client predictions and server results.</li>
+        <li><strong>Multiple Players:</strong> When multiple players are involved in an interaction, rewind for each player’s perspective to ensure fairness.</li>
+        <li><strong>Performance Considerations:</strong> Optimize the frequency of snapshot storage and rewind operations to avoid excessive computational overhead.</li>
+    </ul>
+
+    <h3>5. Testing and Debugging</h3>
+    <p>Use Unreal Engine's network simulation tools to test various latency scenarios. Evaluate how well the server rewinding handles different network conditions and ensure consistent and fair gameplay results.</p>
+
+    <h2>Conclusion</h2>
+    <p>Server rewinding is an essential technique for maintaining fairness in multiplayer games with varying latencies. By carefully implementing and testing server rewinding, you can ensure that gameplay remains fair and enjoyable for all players, regardless of their network conditions.</p>
+
+    <script>
+        // Initialize Highlight.js
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

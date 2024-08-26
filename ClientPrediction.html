@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client prediction</title>
+    <!-- Include Highlight.js CSS for Visual Studio theme -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/vs2015.min.css">
+    <!-- Include Highlight.js JavaScript library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        /* Inline code styling */
+        code {
+            background-color: #f4f4f4;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 140%;
+            color: #d14;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Client Prediction in Unreal Engine</h1>
+    </header>
+    <main>
+        <section>
+            <h2>Introduction</h2>
+            <p>Client prediction is a key technique in multiplayer game development, enabling smoother and more responsive gameplay by allowing the client to predict and simulate actions locally before the server response is received. This technique is crucial for creating a seamless experience, particularly in environments with high network latency.</p>
+        </section>
+
+        <section>
+            <h2>Why Client Prediction is Important</h2>
+            <p>In multiplayer games, latency can cause noticeable delays between a player's action and the corresponding reaction in the game. Without client prediction, players would experience lag as their actions need to be processed by the server and then communicated back to the client. Client prediction addresses this by simulating the result of actions locally, making the game feel more immediate and responsive.</p>
+        </section>
+
+        <section>
+            <h2>Core Concepts of Client Prediction</h2>
+            <h3>Input Handling</h3>
+            <p>Clients capture player inputs and simulate their effects locally. The inputs are also sent to the server for validation and synchronization.</p>
+            
+            <h3>Movement Prediction</h3>
+            <p>Clients predict the outcome of their actions, such as movement, based on their current state and inputs. This ensures the character or object appears to move smoothly in response to player actions.</p>
+
+            <h3>Server Reconciliation</h3>
+            <p>The server processes and validates the actions sent by clients. If the server's calculated state differs from the client's predicted state, it sends corrections to the client to ensure consistency across all clients.</p>
+
+            <h3>Lag Compensation</h3>
+            <p>Techniques are employed to handle varying network latencies, ensuring that all clients have a consistent view of the game state. This often involves smoothing out discrepancies between client predictions and server validations.</p>
+        </section>
+
+        <section>
+            <h2>Implementing Client Prediction in Unreal Engine</h2>
+            <h3>1. Input Handling and Character Movement</h3>
+            <p>Character movement in Unreal Engine is handled by the <code>CharacterMovementComponent</code>, which supports client prediction by default.</p>
+            
+            <div class="example">
+                <h4>Binding Inputs</h4>
+                <pre><code>void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
+    
+    PlayerInputComponent->BindAxis("MoveForward", this, &AMyCharacter::MoveForward);
+    PlayerInputComponent->BindAxis("MoveRight", this, &AMyCharacter::MoveRight);
+}
+
+void AMyCharacter::MoveForward(float Value)
+{
+    AddMovementInput(GetActorForwardVector(), Value);
+}
+
+void AMyCharacter::MoveRight(float Value)
+{
+    AddMovementInput(GetActorRightVector(), Value);
+}</code></pre>
+            </div>
+            
+            <h3>2. Networked Movement and Client Prediction</h3>
+            <p>Unreal Engine’s <code>CharacterMovementComponent</code> handles client-side prediction and server reconciliation automatically. Movement data is replicated to the server, which validates and sends corrections if necessary.</p>
+            
+            <div class="example">
+                <h4>Movement Replication</h4>
+                <pre><code>UPROPERTY(Replicated)
+FVector ServerPosition;</code></pre>
+            </div>
+            
+            <h3>3. Server-Side Validation and Correction</h3>
+            <p>The server validates the client’s reported position and adjusts it if needed. This prevents cheating and ensures a consistent game state.</p>
+            
+            <div class="example">
+                <h4>Server Validation and Correction</h4>
+                <pre><code>void AMyCharacter::ServerMove_Implementation(FVector ClientPosition)
+{
+    if (IsValidMove(ClientPosition))
+    {
+        ServerPosition = ClientPosition;
+    }
+    else
+    {
+        ClientAdjustPosition(ServerPosition);
+    }
+}
+
+bool AMyCharacter::IsValidMove(FVector ClientPosition)
+{
+    // Implement validation logic here
+    return true;
+}
+
+void AMyCharacter::ClientAdjustPosition_Implementation(FVector NewPosition)
+{
+    SetActorLocation(NewPosition);
+}</code></pre>
+            </div>
+
+            <h3>4. Handling Latency, Jitter, and Packet Loss</h3>
+            <p>Unreal Engine includes tools to handle network conditions. Lag compensation and smoothing corrections are essential for maintaining a consistent and smooth experience.</p>
+            
+            <div class="example">
+                <h4>Smoothing Corrections</h4>
+                <pre><code>void AMyCharacter::SmoothCorrection(FVector CorrectedPosition)
+{
+    FVector NewPosition = FMath::VInterpTo(GetActorLocation(), CorrectedPosition, GetWorld()->GetDeltaSeconds(), 10.0f);
+    SetActorLocation(NewPosition);
+}</code></pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>Advanced Topics</h2>
+            <h3>Extrapolation Techniques</h3>
+            <p>Extrapolation helps maintain smooth movement when network conditions are unstable by predicting the position based on velocity and other factors beyond the last known server position.</p>
+
+            <h3>Rollback and Replay</h3>
+            <p>These techniques are used to handle discrepancies by rolling back the game state and replaying actions to ensure consistency between the client and server.</p>
+
+            <h3>Custom Network Protocols</h3>
+            <p>In some cases, custom network protocols may be required to handle specific prediction and synchronization needs more precisely than the default Unreal Engine networking features.</p>
+        </section>
+
+        <section>
+            <h2>Testing and Debugging</h2>
+            <h3>Network Emulation</h3>
+            <p>Unreal Engine’s network emulation tools allow you to simulate various network conditions such as latency and packet loss, which is crucial for testing client prediction mechanisms.</p>
+
+            <h3>Net Mode Configuration</h3>
+            <p>Use Unreal Engine’s <code>NetMode</code> setting to test your game in different network configurations (e.g., dedicated server, listen server, client-only) to ensure that prediction and replication work correctly in all scenarios.</p>
+        </section>
+
+        <section>
+            <h2>Summary</h2>
+            <p>Client prediction is vital for creating responsive and smooth multiplayer experiences. Unreal Engine provides robust support for client prediction, but understanding and fine-tuning these features can help create a more polished and competitive game. By managing input prediction, server reconciliation, and lag compensation, you can ensure that your game remains fluid and fair, even in challenging network conditions.</p>
+        </section>
+    </main>
+
+    <script>
+        // Initialize Highlight.js
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
