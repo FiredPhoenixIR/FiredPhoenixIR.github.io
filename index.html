@@ -1,465 +1,1209 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MST Porfolio</title>
-    <!--=================== Google Fonts ====================-->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mahdi ST — Gameplay Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fire: #FF4500;
+    --ember: #FF8C00;
+    --gold: #FFB347;
+    --dark: #070708;
+    --surface: #0d0d0f;
+    --surface2: #141417;
+    --border: rgba(255,69,0,0.25);
+    --text: #e8e0d8;
+    --muted: #7a7068;
+    --glow: 0 0 20px rgba(255,69,0,0.4), 0 0 60px rgba(255,69,0,0.1);
+    --glow-sm: 0 0 10px rgba(255,69,0,0.5);
+  }
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    overflow-x: hidden;
+    cursor: none;
+  }
 
+  /* ── CUSTOM CURSOR ── */
+  #cursor {
+    position: fixed; width:12px; height:12px; border-radius:50%;
+    background: var(--fire); pointer-events:none; z-index:9999;
+    transform: translate(-50%,-50%);
+    transition: transform 0.1s, background 0.2s;
+    mix-blend-mode: screen;
+  }
+  #cursor-trail {
+    position: fixed; width:40px; height:40px; border-radius:50%;
+    border: 1px solid rgba(255,69,0,0.4); pointer-events:none; z-index:9998;
+    transform: translate(-50%,-50%);
+    transition: all 0.12s ease;
+  }
+  a:hover ~ #cursor, button:hover ~ #cursor { transform: translate(-50%,-50%) scale(2); }
 
-    <!--=================== Remixicons ====================-->
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content:''; position:fixed; inset:0; z-index:1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; opacity:0.3;
+  }
 
-    <!--=================== SwiperJS CSS ====================-->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" />
+  /* ── SCANLINES ── */
+  body::after {
+    content:''; position:fixed; inset:0; z-index:2;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events:none;
+  }
 
+  /* ── NAV ── */
+  nav {
+    position: fixed; top:0; left:0; right:0; z-index:100;
+    padding: 20px 60px;
+    display: flex; align-items:center; justify-content:space-between;
+    transition: all 0.4s ease;
+  }
+  nav.scrolled {
+    background: rgba(7,7,8,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 60px;
+  }
+  .nav-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900; font-size: 1.1rem;
+    color: var(--fire);
+    letter-spacing: 0.2em;
+    text-decoration: none;
+    text-shadow: var(--glow-sm);
+  }
+  .nav-links { display:flex; gap:36px; list-style:none; }
+  .nav-links a {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem; letter-spacing: 0.15em; text-transform:uppercase;
+    color: var(--muted); text-decoration:none;
+    transition: color 0.3s;
+    position: relative;
+  }
+  .nav-links a::after {
+    content:''; position:absolute; bottom:-4px; left:0; right:0; height:1px;
+    background: var(--fire); transform: scaleX(0); transition: transform 0.3s;
+  }
+  .nav-links a:hover { color: var(--fire); }
+  .nav-links a:hover::after { transform: scaleX(1); }
 
-    <!--=================== Main CSS ====================-->
-    <link rel="stylesheet" href="assets/css/main.css">
+  /* ── HERO ── */
+  #hero {
+    position: relative; height: 100vh; min-height: 700px;
+    display: flex; align-items: center;
+    overflow: hidden;
+  }
+  #particle-canvas {
+    position: absolute; inset: 0; z-index: 0;
+  }
+  .hero-grid {
+    position: absolute; inset:0; z-index:1;
+    background-image:
+      linear-gradient(rgba(255,69,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,69,0,0.04) 1px, transparent 1px);
+    background-size: 80px 80px;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+  .hero-content {
+    position: relative; z-index: 5;
+    padding: 0 60px; max-width: 900px;
+  }
+  .hero-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--fire); margin-bottom: 24px;
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0; animation: fadeUp 0.6s 0.3s forwards;
+  }
+  .hero-label::before {
+    content:''; width:40px; height:1px; background: var(--fire);
+  }
+  .hero-name {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(3rem, 7vw, 6rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 8px;
+    opacity: 0; animation: fadeUp 0.8s 0.5s forwards;
+  }
+  .hero-name span {
+    color: var(--fire);
+    text-shadow: var(--glow);
+    display: inline-block;
+    animation: flicker 6s infinite 2s;
+  }
+  @keyframes flicker {
+    0%,95%,100%{opacity:1; text-shadow: var(--glow);}
+    96%{opacity:0.8; text-shadow:none;}
+    97%{opacity:1; text-shadow: var(--glow);}
+    98%{opacity:0.6;}
+    99%{opacity:1;}
+  }
+  .hero-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    font-weight: 400; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 32px;
+    opacity: 0; animation: fadeUp 0.8s 0.7s forwards;
+  }
+  .hero-title .typed-cursor { color: var(--fire); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .hero-desc {
+    font-size: 1.1rem; line-height: 1.8; color: var(--muted);
+    max-width: 540px; margin-bottom: 48px;
+    opacity: 0; animation: fadeUp 0.8s 0.9s forwards;
+  }
+  .hero-cta {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    opacity: 0; animation: fadeUp 0.8s 1.1s forwards;
+  }
+  .btn-primary {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 14px 36px;
+    background: var(--fire); color: #000;
+    border: none; text-decoration: none;
+    position: relative; overflow: hidden;
+    transition: all 0.3s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn-primary::before {
+    content:''; position:absolute; inset:0;
+    background: var(--ember);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+  .btn-primary:hover { box-shadow: var(--glow); color: #000; }
+  .btn-primary:hover::before { transform: translateX(0); }
+  .btn-primary span { position: relative; z-index:1; }
+  .btn-secondary {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 13px 35px;
+    background: transparent; color: var(--fire);
+    border: 1px solid var(--fire); text-decoration: none;
+    transition: all 0.3s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn-secondary:hover { background: rgba(255,69,0,0.1); box-shadow: var(--glow-sm); }
 
+  .hero-stats {
+    position: absolute; bottom: 60px; right: 60px; z-index:5;
+    display: flex; gap: 48px;
+    opacity: 0; animation: fadeUp 0.8s 1.3s forwards;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-family: 'Orbitron', monospace; font-size: 2.5rem; font-weight: 900;
+    color: var(--fire); text-shadow: var(--glow-sm); line-height:1;
+  }
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+    margin-top: 4px;
+  }
+  .scroll-hint {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    z-index:5; display:flex; flex-direction:column; align-items:center; gap:8px;
+    opacity: 0; animation: fadeIn 1s 2s forwards;
+  }
+  .scroll-hint span {
+    font-family: 'Share Tech Mono', monospace; font-size:0.6rem;
+    letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase;
+  }
+  .scroll-line {
+    width: 1px; height: 48px; background: linear-gradient(to bottom, var(--fire), transparent);
+    animation: scrollAnim 2s infinite;
+  }
+  @keyframes scrollAnim { 0%{transform:scaleY(0);transform-origin:top} 50%{transform:scaleY(1);transform-origin:top} 51%{transform:scaleY(1);transform-origin:bottom} 100%{transform:scaleY(0);transform-origin:bottom} }
+
+  @keyframes fadeUp { from{opacity:0; transform:translateY(30px)} to{opacity:1; transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  /* ── SECTIONS ── */
+  section { padding: 120px 60px; position: relative; }
+  .section-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--fire); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-tag::before { content:'//'; }
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 900;
+    color: var(--text); line-height: 1.1; margin-bottom: 60px;
+  }
+  .section-title em { color: var(--fire); font-style: normal; }
+
+  /* reveal animation */
+  .reveal {
+    opacity: 0; transform: translateY(40px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+
+  /* ── ABOUT ── */
+  #about { background: var(--surface); }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+  .about-text p {
+    font-size: 1.1rem; line-height: 1.9; color: var(--muted); margin-bottom: 20px;
+  }
+  .about-text p strong { color: var(--text); }
+  .about-image-container {
+    position: relative;
+  }
+  .about-img-frame {
+    position: relative; width: 100%; padding-bottom: 110%;
+    overflow: hidden;
+    clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 30px, 100% 100%, 30px 100%, 0 calc(100% - 30px));
+    background: var(--surface2);
+  }
+  .about-img-frame img {
+    width: 100%; height: 100%; object-fit: cover; object-position: top;
+    filter: grayscale(20%) contrast(1.1);
+    transition: filter 0.4s;
+    position: absolute; top:0; left:0;
+  }
+  .about-img-frame:hover img { filter: grayscale(0%) contrast(1.1); }
+  .about-img-border {
+    position: absolute; inset: -2px;
+    clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 30px, 100% 100%, 30px 100%, 0 calc(100% - 30px));
+    background: linear-gradient(135deg, var(--fire), transparent 50%);
+    z-index: -1;
+  }
+  .about-corner {
+    position: absolute; width: 20px; height: 20px;
+    border-color: var(--fire); border-style: solid;
+  }
+  .about-corner.tl { top:-8px; left:-8px; border-width: 2px 0 0 2px; }
+  .about-corner.br { bottom:-8px; right:-8px; border-width: 0 2px 2px 0; }
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 32px;
+  }
+  .tech-chip {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.72rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 8px 12px; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--fire);
+    text-align: center; transition: all 0.3s;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+  .tech-chip:hover { background: rgba(255,69,0,0.1); box-shadow: var(--glow-sm); }
+  .tech-chip.highlight { background: rgba(255,69,0,0.12); border-color: var(--fire); }
+
+  /* ── EXPERIENCE ── */
+  #experience { }
+  .timeline { position: relative; padding-left: 0; }
+  .timeline::before {
+    content:''; position:absolute; left: 200px; top:0; bottom:0; width:1px;
+    background: linear-gradient(to bottom, transparent, var(--fire) 10%, var(--fire) 90%, transparent);
+  }
+  .timeline-item {
+    display: grid; grid-template-columns: 200px 1fr;
+    gap: 0 60px; margin-bottom: 56px; position: relative;
+  }
+  .timeline-date {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.15em; color: var(--muted); text-align: right;
+    padding-top: 6px; line-height: 1.8;
+  }
+  .timeline-date strong { display:block; color: var(--fire); font-size:0.65rem; }
+  .timeline-dot {
+    position: absolute; left: 200px; top: 8px;
+    width: 10px; height: 10px;
+    background: var(--fire); border-radius: 50%;
+    transform: translateX(-50%);
+    box-shadow: var(--glow-sm);
+  }
+  .timeline-dot::before {
+    content:''; position:absolute; inset:-4px;
+    border: 1px solid rgba(255,69,0,0.4); border-radius:50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0} }
+  .timeline-content {
+    padding-left: 30px; padding-bottom: 56px;
+    border-bottom: 1px solid rgba(255,69,0,0.08);
+  }
+  .timeline-item:last-child .timeline-content { border-bottom: none; padding-bottom: 0; }
+  .timeline-company {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.72rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--fire); margin-bottom: 6px;
+  }
+  .timeline-role {
+    font-family: 'Orbitron', monospace; font-size: 1.2rem; font-weight: 700;
+    color: var(--text); margin-bottom: 12px;
+  }
+  .timeline-desc {
+    font-size: 1rem; line-height: 1.8; color: var(--muted); max-width: 580px;
+  }
+  .timeline-tags { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .tag {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 4px 10px;
+    background: rgba(255,69,0,0.08); border: 1px solid var(--border);
+    color: var(--ember);
+  }
+  .tag.current { background: rgba(255,69,0,0.15); border-color: var(--fire); color: var(--fire); }
+
+  /* ── PROJECTS ── */
+  #projects { background: var(--surface); }
+  .projects-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 2px;
+  }
+  .project-card {
+    position: relative; background: var(--surface2);
+    padding: 36px; overflow: hidden;
+    border: 1px solid transparent;
+    transition: all 0.4s;
+    cursor: none;
+  }
+  .project-card::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, rgba(255,69,0,0.06), transparent);
+    opacity:0; transition: opacity 0.4s;
+  }
+  .project-card::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--fire), transparent);
+    transform: scaleX(0); transition: transform 0.4s;
+  }
+  .project-card:hover { border-color: var(--border); transform: translateY(-4px); }
+  .project-card:hover::before { opacity:1; }
+  .project-card:hover::after { transform: scaleX(1); }
+  .project-number {
+    font-family: 'Orbitron', monospace; font-size: 3.5rem; font-weight: 900;
+    color: rgba(255,69,0,0.08); position: absolute; top: 20px; right: 24px;
+    line-height: 1; transition: color 0.4s;
+  }
+  .project-card:hover .project-number { color: rgba(255,69,0,0.15); }
+  .project-icon {
+    width: 48px; height: 48px; background: rgba(255,69,0,0.1);
+    border: 1px solid var(--border); display: flex; align-items:center; justify-content:center;
+    margin-bottom: 20px; font-size: 1.5rem;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+  .project-title {
+    font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700;
+    color: var(--text); margin-bottom: 10px; line-height: 1.3;
+  }
+  .project-status {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px; display: flex; align-items:center; gap:8px;
+  }
+  .status-dot { width:6px; height:6px; border-radius:50%; }
+  .status-dot.active { background: #00ff88; box-shadow: 0 0 8px #00ff88; animation: pulse 2s infinite; }
+  .status-dot.private { background: var(--muted); }
+  .project-desc {
+    font-size: 0.95rem; line-height: 1.7; color: var(--muted); margin-bottom: 20px;
+  }
+  .project-link {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--fire); text-decoration: none;
+    display: inline-flex; align-items:center; gap:8px;
+    transition: gap 0.3s;
+  }
+  .project-link:hover { gap:14px; }
+  .project-link::after { content:'→'; }
+
+  /* ── SKILLS ── */
+  #skills { }
+  .skills-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; }
+  .skill-group-title {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.3em; text-transform: uppercase; color: var(--fire);
+    margin-bottom: 24px; display: flex; align-items:center; gap:12px;
+  }
+  .skill-group-title::after { content:''; flex:1; height:1px; background: var(--border); }
+  .skill-bar-item { margin-bottom: 22px; }
+  .skill-bar-header { display:flex; justify-content:space-between; margin-bottom: 8px; }
+  .skill-name {
+    font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 600;
+    letter-spacing: 0.05em; color: var(--text);
+  }
+  .skill-level {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--fire);
+  }
+  .skill-track {
+    height: 3px; background: rgba(255,255,255,0.05); position: relative; overflow: hidden;
+  }
+  .skill-fill {
+    height: 100%; background: linear-gradient(90deg, var(--fire), var(--ember));
+    width: 0; transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+  }
+  .skill-fill::after {
+    content:''; position:absolute; right:0; top:50%; transform: translateY(-50%);
+    width:8px; height:8px; background: var(--gold); border-radius:50%;
+    box-shadow: 0 0 8px var(--gold);
+  }
+  .skill-fill.animated { /* triggered by JS */ }
+
+  .expertise-list { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .expertise-item {
+    padding: 18px 20px; background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+  .expertise-item:hover { border-color: var(--fire); background: rgba(255,69,0,0.06); }
+  .expertise-name {
+    font-family: 'Orbitron', monospace; font-size: 0.75rem; font-weight: 700;
+    color: var(--text); margin-bottom: 4px; letter-spacing: 0.05em;
+  }
+  .expertise-sub {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    color: var(--muted); letter-spacing: 0.1em;
+  }
+
+  /* ── BLOG ── */
+  #blog { background: var(--surface); }
+  .blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .blog-card {
+    padding: 36px; background: var(--surface2);
+    border: 1px solid transparent; position: relative;
+    overflow: hidden; transition: all 0.4s; text-decoration: none;
+    display: block;
+  }
+  .blog-card::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, var(--fire), var(--ember));
+    transform: scaleX(0); transition: transform 0.4s; transform-origin: left;
+  }
+  .blog-card:hover { border-color: var(--border); transform: translateY(-4px); }
+  .blog-card:hover::after { transform: scaleX(1); }
+  .blog-tag {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--fire); margin-bottom: 16px;
+    padding: 4px 10px; background: rgba(255,69,0,0.08);
+    border: 1px solid var(--border); display: inline-block;
+  }
+  .blog-title {
+    font-family: 'Orbitron', monospace; font-size: 1.05rem; font-weight: 700;
+    color: var(--text); line-height: 1.4; margin-bottom: 14px;
+  }
+  .blog-desc {
+    font-size: 0.95rem; line-height: 1.7; color: var(--muted); margin-bottom: 24px;
+  }
+  .blog-read {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--fire); display: inline-flex; align-items:center; gap:8px;
+    transition: gap 0.3s;
+  }
+  .blog-card:hover .blog-read { gap: 14px; }
+  .blog-read::after { content:'→'; }
+
+  /* ── CONTACT ── */
+  #contact { }
+  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
+  .contact-info h3 {
+    font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700;
+    color: var(--text); margin-bottom: 8px;
+  }
+  .contact-info p {
+    font-size: 1rem; line-height: 1.8; color: var(--muted); margin-bottom: 48px;
+  }
+  .contact-link-item {
+    display: flex; align-items: center; gap: 20px;
+    padding: 18px 0; border-bottom: 1px solid rgba(255,69,0,0.08);
+    text-decoration: none; color: var(--text); transition: all 0.3s;
+    cursor: none;
+  }
+  .contact-link-item:hover { padding-left: 8px; color: var(--fire); }
+  .contact-link-item:hover .contact-link-label { color: var(--fire); }
+  .contact-link-icon {
+    width: 44px; height: 44px; background: var(--surface2);
+    border: 1px solid var(--border); display: flex; align-items:center; justify-content:center;
+    font-size: 1.1rem; flex-shrink:0;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+    transition: all 0.3s;
+  }
+  .contact-link-item:hover .contact-link-icon { background: rgba(255,69,0,0.1); border-color: var(--fire); }
+  .contact-link-label {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+  }
+  .contact-link-value { font-size: 0.95rem; color: var(--text); }
+  .contact-availability {
+    margin-top: 40px; padding: 24px;
+    background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.2);
+  }
+  .availability-dot {
+    display: inline-flex; align-items:center; gap:10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.15em; text-transform: uppercase; color: #00ff88;
+  }
+  .availability-dot::before {
+    content:''; width:8px; height:8px; border-radius:50%;
+    background: #00ff88; box-shadow: 0 0 10px #00ff88;
+    animation: pulse 2s infinite;
+  }
+  .contact-form { display: flex; flex-direction: column; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+  }
+  .form-input, .form-textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 1rem;
+    padding: 14px 18px; outline: none; transition: border-color 0.3s;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+  .form-input:focus, .form-textarea:focus { border-color: var(--fire); }
+  .form-textarea { resize: vertical; min-height: 140px; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 60px;
+    display: flex; align-items:center; justify-content:space-between;
+    background: var(--surface);
+  }
+  footer p {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.15em; color: var(--muted);
+  }
+  footer p span { color: var(--fire); }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a {
+    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; transition: color 0.3s;
+  }
+  .footer-links a:hover { color: var(--fire); }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--fire) 20%, var(--fire) 80%, transparent);
+    opacity: 0.2; margin: 0;
+  }
+
+  /* ── ACTIVE NAV ── */
+  .nav-links a.active { color: var(--fire); }
+
+  /* ── MOBILE ── */
+  @media (max-width: 900px) {
+    nav { padding: 16px 24px; }
+    nav.scrolled { padding: 12px 24px; }
+    .nav-links { display: none; }
+    section { padding: 80px 24px; }
+    .hero-content { padding: 0 24px; }
+    .hero-stats { right: 24px; bottom: 80px; gap: 24px; }
+    .about-grid, .skills-layout, .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+    .timeline::before { left: 100px; }
+    .timeline-item { grid-template-columns: 100px 1fr; }
+    .blog-grid { grid-template-columns: 1fr; }
+    .projects-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
 </head>
-
 <body>
 
-    <!--=================== Header ====================-->
-    <header id="header" class="header">
-        <div class="container">
-            <nav class="nav">
-                <a href="index.html" class="nav__brand">
-                    <i class="ri-code-s-slash-line"></i>Mahdi<Span>ST</Span>
-                </a>
-                <div class="nav__menu" id="nav-menu">
-                    <ul class="nav__list">
-                        <li class="nav__item">
-                            <a href="#hero" class="nav__link">Home</a>
-                        </li>
-                        <li class="nav__item">
-                            <a href="#about" class="nav__link">About</a>
-                        </li>
-                        <li class="nav__item">
-                            <a href="#qualification" class="nav__link">Qualification</a>
-                        </li>
-                        <!-- <li class="nav__item">
-                            <a href="#service" class="nav__link">Services</a>
-                        </li> -->
-                        <li class="nav__item">
-                            <a href="#project" class="nav__link">Projects</a>
-                        </li>
-                        <li class="nav__item">
-                            <a href="#contact"  class="nav__link">Contact</a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="nav__toggle">
-                    <i id="nav-toggle" class="ri-menu-3-line"></i>
-                </div>
-            </nav>
-        </div>
-    </header>
-    <!--=================== main ====================-->
-    <main class="main">
-        <!--=================== Hero ====================-->
-        <section id="hero" class="hero">
-            <div class="container">
-                <div class="d-grid hero__wrapper">
-                    <div class="hero__content">
-                        <h1 class="hero__title">Hi, I'm Mahdi,<br>Game  Developer.</h1>
-                        <p class="hero__description">I'm a driven and dedicated software developer with a passion for crating efficient and effective solutions.
-                            I strive to deliver high-quality and advanced gameplay mechanics that meets the needs of clients and end-users.
-							Let's work together to bring your next game to life.
-                        </p>
-                        <div class="hero__info">
-                            <div class="hero__info-wrapper">
-                                <p class="hero__info-number">03+</p>
-                                <h2 class="hero__info-title">Years<br>Experience</h2>
-                            </div>
-                            <div class="hero__info-wrapper">
-                                <p class="hero__info-number">5+</p>
-                                <h2 class="hero__info-title">Projects<br>Completed</h2>
-                            </div>
-                            <!-- <div class="hero__info-wrapper">
-                                <p class="hero__info-number">03+</p>
-                                <h2 class="hero__info-title">Companies<br> Worked</h2>
-                            </div> -->
-                        </div>
-                    </div>
-                    <img src="assets/img/Mahdi.jpg" alt="Mahdi_S_T" class="hero__img">
-                </div>
-            </div>
-        </section>
+<div id="cursor"></div>
+<div id="cursor-trail"></div>
 
-        <!--=================== About ====================-->
-        <section id="about" class="section about">
-            <div class="container">
-                <div class="section__header">
-                    <h2 class="section__title">About Me</h2>
-                    <span class="section__subtitle">Who am I</span>
-                </div>
-                <div class="d-grid about__wrapper">
-                    <div class="about__content">
-                        <h3 class="about__title">I'm a Professional and Experienced Software Developer.</h3>
-                        <p class="about__description">I have  a strong focus on creating intuitive and efficient software solutions to meet the needs of clients and end-users.
-                            When I'm not coding, I love to stay up-to-date with the latest technology trends and imporiving my skills.
-                            I'm always eager to take new challenges and work with a team to deliver exceptional results.
-                        </p>
-                        <a href="#project" class="btn btn--primary">Know More</a>
-                    </div>
-                    <div class="skills">
-                        <h3 class="skills__title">Technologies I've been working with:</h3>
-                        <div class="skills__wrapper">
-                            <div class="skills__content">
-                                <h4 class="skills__subtitle">Backend</h4>
-                                <ul class="skills__list">
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Linux</li>
-                                    <!-- <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        PHP</li> -->
-                                    <!-- <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Node.js</li> -->
-                                    <!-- <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Firebase</li> -->
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Oracle</li>
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Python</li>
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Kubernetes</li>
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Docker</li>										
-                                </ul>
-                            </div>
-                            <div class="skills__content">
-                                <h4 class="skills__subtitle">Game Development</h4>
-                                <ul class="skills__list">
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        C++</li>
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Blueprints</li>
-                                    <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Unreal Engine 5</li>
+<!-- NAV -->
+<nav id="navbar">
+  <a class="nav-logo" href="#hero">MST</a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#skills">Skills</a></li>
+    <li><a href="#blog">Blog</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
 
-                                    <!-- <li class="skills__item"><i class="ri-arrow-right-s-fill"></i>
-                                        Vue.js</li> -->
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!--=================== Qualification ====================-->
-        <section id="qualification" class="section qualification">
-            <div class="container">
-                <div class="section__header">
-                    <h2 class="section__title">Qualification</h2>
-                    <span class="section__subtitle">Experience & Education</span>
-                </div>
-                <!--============== Professional Experience ============-->
-                <div class="qualification__wrapper">
-                    <h3 class="qualification__name">
-                        <i class="ri-briefcase-fill"></i>
-                        Professional Experience
-                    </h3>
-                    <div class="d-grid qualification__content">
-			<!-- Experience 0-->
-                        <div class="qualification__item">
-                            <h3 class="qualification__title">Gameplay Engineer</h3>
-                            <p class="qualification__description"> Seedworld Project in Seedify
-                            </p>
-                            <span class="qualification__date">2024 - Present</span>
-                        </div>
-                        <!-- Experience 1-->
-                        <div class="qualification__item">
-                            <h3 class="qualification__title">Freelance Game Developer</h3>
-                            <p class="qualification__description">As a freelance Game developer, I am passionate about creating innovative and effective gameplays thats meet the unique needs of my clients and end-users.
-                                Whether it's building a custom game mechanic or implementing essential codes, I bring expertise and creativity to every project, 
-                                and I am always looking for new and challenging projects to tackle.
-                            </p>
-                            <span class="qualification__date">2021 - Present</span>
-                        </div>
-                        <!-- Experience 2-->
-                        <div class="qualification__item">
-                            <h3 class="qualification__title">Game Developer</h3>
-                            <p class="qualification__description">Unreal Engine Developer
-								Working on some essential game mechanics (Movements/Attacks/...) and Metasounds.
-								Used both C++ and Blueprints to achieve an optimized approach.
-                            </p>
-                            <span class="qualification__date">2022 - 2023</span>
-                        </div>
-                        <!-- Experience 3-->
-                        <div class="qualification__item">
-                            <h3 class="qualification__title">Technical Support Engineer</h3>
-                            <p class="qualification__description">maintaining critical databases for one of Iran's largest telecom companies, MTN Irancell, 
-							boasting over 10 million subscribers. Proficient in working with Oracle 11g databases on RedHat
-							</p>
-                            <span class="qualification__date">2017 - 2019</span>
-                        </div>
-                    </div>
-                </div>
-                <!--============== Education ============-->
-                <div class="qualification__wrapper">
-                    <h3 class="qualification__name">
-                        <i class="ri-booklet-fill"></i>
-                        Education
-                    </h3>
-                    <div class="d-grid qualification__content">
-                        <!-- Education 1-->
-                        <div class="qualification__item">
-                            <h3 class="qualification__title">Mathematics & Computer Science</h3>
-                            <p class="qualification__description">As a computer science student, I have a strong foundation in algorithms, data structures, software design and Development.
-                                My coursework has provided me with a deep understanding of the principles and practices of computer science,
-                                and I have honed my programming skills through various projects and assignments.
-                            </p>
-                            <span class="qualification__date">2020 - 2024</span>
-                        </div>
-                        <!-- Education 2-->
-                        <div class="qualification__item">
-                            <h3 class="qualification__title">Courses</h3>
-                            <p class="qualification__description">I've completed numerous courses to continuously enhance and maintain my expertise. You can view the full list of certifications in the "Certifications" section of my LinkedIn profile
-                            </p>
-							<p class="qualification__description"> </p>
-							<p class="qualification__description"> -------------------------- </p>
-							<a href="https://www.linkedin.com/in/mahdi-sadeghian-tehrani/details/certifications/" class="btn btn--primary">Certifications</a>
-							<p class="qualification__description"> </p>
-							<p class="qualification__description"> </p>
-                            <span class="qualification__date">2016 - Now</span>
-                        </div>
-                        <!-- Education 3-->
-                        <!-- <div class="qualification__item">
-                            <h3 class="qualification__title">Software Engineer</h3>
-                            <p class="qualification__description">Lorem ipsum dolor sit amet consectetur.
-                                Facilisi vitae bibendum praesent sodales
-                                urna vel molestie neque augue.</p>
-                            <span class="qualification__date">2010 - 2014</span>
-                        </div> -->
-                    </div>
-                </div>
-                <div class="qualification__footer">
-                    <p class="qualification__footer-text">See my full resume</p>
-                    <a href="./assets/Mahdi_ST_Resume.pdf" download class="btn btn--primary">Resume</a>
-                </div>
-            </div>
-        </section>
-
-        <!--=================== Projects ====================-->
-        <section id="project" class="section project">
-            <div class="container">
-                <div class="section__header">
-                    <h2 class="section__title">Projects</h2>
-                    <span class="section__subtitle">My recent works</span>
-                </div>
-                <div class="d-grid project__wrapper">
-                    <!--============== project 1 =============-->
-                    <div class="project__content">
-                        <img src="assets/img/Project1.png" alt="UE5 Multiplayer Shooter" class="project__img">
-                        <h3 class="project__title">3rd Person Multiplayer - UE5</h3>
-                        <p class="project__description">A Multiplayer Shooter Game With Lots of features in C++</p>
-                        <a href="https://github.com/FiredPhoenixIR/Multishooter" class="project__link">View Project
-                            <i class="ri-arrow-right-line"></i></a>
-                    </div>
-                    <!--============== project 2 =============-->
-                    <div class="project__content">
-                        <img src="assets/img/project2.png" alt="Open World - UE5" class="project__img">
-                        <h3 class="project__title">Open World - UE5</h3>
-                        <p class="project__description">An Open World Soul-like game (in progress)</p>
-                        <a href="https://github.com/FiredPhoenixIR/Dungeon_Life_UE" class="project__link">View Project
-                            <i class="ri-arrow-right-line"></i></a>
-                    </div>
-                    <!--============== project 3 =============-->
-                    <div class="project__content">
-                        <img src="assets/img/project3.png" alt="Aura" class="project__img">
-                        <h3 class="project__title">GA System - UE5</h3>
-                        <p class="project__description">A Complete game built with GAS (In progress - Private Repo)</p>
-                        <a href="https://github.com/FiredPhoenixIR/" class="project__link">View Project
-                            <i class="ri-arrow-right-line"></i></a>
-                    </div>
-                    <!-- ============== project 4 =============-->
-                    <div class="project__content">
-                        <img src="assets/img/project4.png" alt="Motion Wrapper" class="project__img">
-                        <h3 class="project__title">Assasination - Motion Warping</h3>
-                        <p class="project__description">Using Motion Warping to sync two characters with two-person animations! We sync up an assassin and a victim to perform stealth kills (In progress - Private Repo)</p>
-                        <a href="https://github.com/FiredPhoenixIR/" class="project__link">View Project
-                            <i class="ri-arrow-right-line"></i></a>
-                    </div>
-					<!--============== project 5 =============-->
-                    <div class="project__content">
-                        <img src="assets/img/project5.png" alt="Bow" class="project__img">
-                        <h3 class="project__title">Bow & Arrow</h3>
-                        <p class="project__description">A character with bow and arrow functionality with awesome animation setup! (In progress - Private Repo)</p>
-                        <a href="https://github.com/FiredPhoenixIR/" class="project__link">View Project
-                            <i class="ri-arrow-right-line"></i></a>
-                    </div>
-					<!--============== project 6 =============
-                    <div class="project__content">
-                        <img src="assets/img/project6.png" alt="UndoRedo" class="project__img">
-                        <h3 class="project__title">Undo & Redo</h3>
-                        <p class="project__description">Code explaining how to do the undo and redo process in UE! </p>
-                        <a href="https://github.com/FiredPhoenixIR/Undo-Redo-UE" class="project__link">View Project
-                            <i class="ri-arrow-right-line"></i></a>
-                    </div>-->
-                </div>
-            </div>
-        </section>
-
-        <!--=================== Testimonials ====================-->
-        <!-- <section id="testimonial" class="section testimonial">
-            <div class="container">
-                <div class="section__header">
-                    <h2 class="section__title">Testimonials</h2>
-                    <span class="section__subtitle">What my clients say</span>
-                </div>
-                <div class="testimonial__wrapper swiper">
-                    <div class="swiper-wrapper">
-                        <!--========= testimonial 1 ============ -->
-                        <!-- <div class="testimonial__card swiper-slide">
-                            <img src="assets/img/testimonial1.jpg" alt="Natasha Smith" class="testimonial__img">
-                            <div class="testimonial__content">
-                                <p class="testimonial__description">Lorem ipsum dolor sit amet consectetur. Dignissim
-                                    tincidunt egestas vitae porttitor nulla gravida commodo.</p>
-                                <h3 class="testimonial__name">Natasha Smith</h3>
-                                <span class="testimonial__occupation">UI/UX Designer at Dribbble</span>
-                            </div>
-                        </div> -->
-                        <!--========= testimonial 2 ============ -->
-                        <!-- <div class="testimonial__card swiper-slide">
-                            <img src="assets/img/testimonial2.jpg" alt="John Clarke" class="testimonial__img">
-                            <div class="testimonial__content">
-                                <p class="testimonial__description">Lorem ipsum dolor sit amet consectetur. Dignissim
-                                    tincidunt egestas vitae porttitor nulla gravida commodo.</p>
-                                <h3 class="testimonial__name">John Clarke</h3>
-                                <span class="testimonial__occupation">Web Developer at Facebook</span>
-                            </div>
-                        </div> -->
-                        <!--========= testimonial 3 ============ -->
-                        <!-- <div class="testimonial__card swiper-slide">
-                            <img src="assets/img/testimonial3.jpg" alt="Emily Walker" class="testimonial__img">
-                            <div class="testimonial__content">
-                                <p class="testimonial__description">Lorem ipsum dolor sit amet consectetur. Dignissim
-                                    tincidunt egestas vitae porttitor nulla gravida commodo.</p>
-                                <h3 class="testimonial__name">Emily Walker</h3>
-                                <span class="testimonial__occupation">Backend Developer at Google
-                                </span>
-                            </div>
-                        </div> -->
-                    </div>
-                    <div class="swiper-pagination"></div>
-                </div>
-            </div>
-        </section>
-		
-		<!--=================== Blogs ====================-->
-		
-		<section id="service" class="section service">
-    <div class="container">
-        <div class="section__header">
-            <h2 class="section__title">Blogs</h2>
-            <span class="section__subtitle">Some Educational Posts</span>
-        </div>
-        <div class="d-grid service__wrapper">
-            <div class="service__card">
-                <div class="service__icon">
-                    <i class="ri-layout-4-fill"></i>
-                </div>
-                <h3 class="service__title">Client<br> Prediction</h3>
-                <a href="ClientPrediction.html" class="service__link">Know More</a>
-            </div>
-            <div class="service__card">
-                <div class="service__icon">
-                    <i class="ri-code-s-slash-line"></i>
-                </div>
-                <h3 class="service__title">Server<br> Rewinding</h3>
-                <a href="ServerRewinding.html" class="service__link">Know More</a>
-            </div>
-            <div class="service__card">
-                <div class="service__icon">
-                    <!--<i class="ri-pen-nib-fill"></i>-->
-					<i class="ri-code-s-slash-line"></i>
-                </div>
-                <h3 class="service__title">Serialization<br> UE4/5</h3>
-                <a href="Serialization.html" class="service__link">Know More</a>
-            </div> 
-        </div>
+<!-- HERO -->
+<section id="hero">
+  <canvas id="particle-canvas"></canvas>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-label">Gameplay Engineer · Unreal Engine 5</div>
+    <h1 class="hero-name">Mahdi<br><span>Sadeghian</span></h1>
+    <div class="hero-title">
+      <span id="typed-text"></span><span class="typed-cursor">_</span>
     </div>
+    <p class="hero-desc">
+      C++ specialist building high-performance multiplayer systems and gameplay mechanics.<br>
+      Currently shipping at <strong style="color:var(--text)">Everreach Labs · Revenge</strong>.
+    </p>
+    <div class="hero-cta">
+      <a href="#projects" class="btn-primary"><span>View My Work</span></a>
+      <a href="#contact" class="btn-secondary">Get In Touch</a>
+    </div>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num" data-count="4">0</div>
+      <div class="stat-label">Years in<br>Game Dev</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" data-count="5">0</div>
+      <div class="stat-label">Projects<br>Shipped</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" data-count="3">0</div>
+      <div class="stat-label">Technical<br>Articles</div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+<div class="section-divider"></div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-tag">Who I Am</div>
+  <h2 class="section-title reveal">Building the <em>Next Generation</em><br>of Game Experiences</h2>
+  <div class="about-grid">
+    <div class="about-text reveal reveal-delay-1">
+      <p>I'm <strong>Mahdi Sadeghian Tehrani</strong>, a Gameplay Engineer specialising in <strong>Unreal Engine 5 C++</strong>. My focus lies in complex systems: the Gameplay Ability System (GAS), server-authoritative multiplayer architecture, and performance-critical mechanics.</p>
+      <p>Currently building <strong>Seedworld</strong> at Seedify — a AAA-quality open-world multiplayer experience. I thrive at the intersection of technical precision and creative problem-solving.</p>
+      <p>When I'm not deep in code, I write technical articles on advanced UE5 topics to give back to the gamedev community.</p>
+      <div class="tech-grid">
+        <div class="tech-chip highlight">Unreal Engine 5</div>
+        <div class="tech-chip highlight">C++</div>
+        <div class="tech-chip highlight">GAS</div>
+        <div class="tech-chip">Multiplayer</div>
+        <div class="tech-chip">Blueprints</div>
+        <div class="tech-chip">MetaSounds</div>
+        <div class="tech-chip">Motion Warping</div>
+        <div class="tech-chip highlight">Iris</div>
+        <div class="tech-chip">Networking</div>
+      </div>
+    </div>
+    <div class="about-image-container reveal reveal-delay-2">
+      <div class="about-img-border"></div>
+      <div class="about-img-frame">
+        <img src="https://firedphoenixir.github.io/assets/img/Mahdi.jpg" alt="Mahdi ST" loading="lazy">
+      </div>
+      <div class="about-corner tl"></div>
+      <div class="about-corner br"></div>
+    </div>
+  </div>
+</section>
+<div class="section-divider"></div>
+
+<!-- EXPERIENCE -->
+<section id="experience">
+  <div class="section-tag">Career</div>
+  <h2 class="section-title reveal">Professional <em>Experience</em></h2>
+  <div class="timeline">
+
+    <div class="timeline-item reveal">
+      <div class="timeline-date">
+        <strong>Current</strong>
+        Feb 2026 — Present
+      </div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-company">Everreach Labs · Full-time · Remote</div>
+        <div class="timeline-role">Gameplay Engineer</div>
+        <div class="timeline-desc">Architecting the gameplay foundation for <strong style="color:var(--text)">Revenge</strong> — a PvE multiplayer extraction game. Building advanced prediction systems on the GAS side, implementing Iris for scalable network replication, and laying the structural groundwork for complex multiplayer ability interactions.</div>
+        <div class="timeline-tags">
+          <span class="tag current">● Active</span>
+          <span class="tag">C++</span>
+          <span class="tag">UE5</span>
+          <span class="tag">GAS</span>
+          <span class="tag">Iris</span>
+          <span class="tag">Prediction</span>
+          <span class="tag">Extraction Game</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item reveal reveal-delay-1">
+      <div class="timeline-date">
+        2024 — 2026
+      </div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-company">Seedify · Seedworld</div>
+        <div class="timeline-role">Gameplay Engineer</div>
+        <div class="timeline-desc">Developed core gameplay systems for Seedworld, an AAA open-world multiplayer title. Implemented server-authoritative mechanics, ability systems, and high-performance C++ architecture at scale.</div>
+        <div class="timeline-tags">
+          <span class="tag">C++</span>
+          <span class="tag">UE5</span>
+          <span class="tag">GAS</span>
+          <span class="tag">Multiplayer</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item reveal reveal-delay-2">
+      <div class="timeline-date">
+        <strong>3+ years</strong>
+        2021 — Present
+      </div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-company">Independent</div>
+        <div class="timeline-role">Freelance Game Developer</div>
+        <div class="timeline-desc">Delivering custom gameplay mechanics and systems for clients. Specialising in UE5 C++ implementations — from complex movement systems to combat mechanics and optimised network replication.</div>
+        <div class="timeline-tags">
+          <span class="tag">C++</span>
+          <span class="tag">UE5</span>
+          <span class="tag">Blueprints</span>
+          <span class="tag">Custom Mechanics</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item reveal reveal-delay-3">
+      <div class="timeline-date">
+        2022 — 2023
+      </div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-company">Game Studio</div>
+        <div class="timeline-role">Unreal Engine Developer</div>
+        <div class="timeline-desc">Worked on essential gameplay mechanics including movement, attacks, and combat systems. Integrated MetaSounds for dynamic audio. Used a hybrid C++ and Blueprint approach for optimal performance and iteration speed.</div>
+        <div class="timeline-tags">
+          <span class="tag">C++</span>
+          <span class="tag">Blueprints</span>
+          <span class="tag">MetaSounds</span>
+          <span class="tag">Combat Systems</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item reveal reveal-delay-3">
+      <div class="timeline-date">
+        2020 — 2024
+      </div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-company">University</div>
+        <div class="timeline-role">BSc Mathematics & Computer Science</div>
+        <div class="timeline-desc">Strong foundation in algorithms, data structures, and software engineering principles. Honed systems-level thinking that directly informs performant gameplay code.</div>
+        <div class="timeline-tags">
+          <span class="tag">Algorithms</span>
+          <span class="tag">Data Structures</span>
+          <span class="tag">Software Design</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+<div class="section-divider"></div>
+
+<!-- PROJECTS -->
+<section id="projects">
+  <div class="section-tag">Work</div>
+  <h2 class="section-title reveal">Featured <em>Projects</em></h2>
+  <div class="projects-grid">
+
+    <div class="project-card reveal">
+      <div class="project-number">01</div>
+      <div class="project-icon">🎯</div>
+      <div class="project-title">3rd Person Multiplayer Shooter</div>
+      <div class="project-status"><span class="status-dot active"></span>Public Repo</div>
+      <div class="project-desc">Full-featured multiplayer shooter built entirely in C++. Implements lag compensation, server-side hit detection, weapon systems, and networked animations.</div>
+      <div class="timeline-tags" style="margin-bottom:20px">
+        <span class="tag">C++</span><span class="tag">Multiplayer</span><span class="tag">Lag Comp</span>
+      </div>
+      <a href="https://github.com/FiredPhoenixIR/Multishooter" class="project-link" target="_blank">View on GitHub</a>
+    </div>
+
+    <div class="project-card reveal reveal-delay-1">
+      <div class="project-number">02</div>
+      <div class="project-icon">⚔️</div>
+      <div class="project-title">GAS — Complete Game System</div>
+      <div class="project-status"><span class="status-dot active"></span>In Progress</div>
+      <div class="project-desc">A fully-featured game built on the Gameplay Ability System. Custom attribute sets, gameplay effects, ability tasks, and a complete ability queue pipeline.</div>
+      <div class="timeline-tags" style="margin-bottom:20px">
+        <span class="tag">GAS</span><span class="tag">C++</span><span class="tag">Attributes</span>
+      </div>
+      <a href="https://github.com/FiredPhoenixIR/" class="project-link" target="_blank">View Profile</a>
+    </div>
+
+    <div class="project-card reveal reveal-delay-2">
+      <div class="project-number">03</div>
+      <div class="project-icon">🌍</div>
+      <div class="project-title">Open World Soul-like</div>
+      <div class="project-status"><span class="status-dot active"></span>In Progress</div>
+      <div class="project-desc">An open-world action RPG inspired by FromSoftware's design philosophy. Complex AI behaviour trees, procedural encounters, and fluid stamina-based combat.</div>
+      <div class="timeline-tags" style="margin-bottom:20px">
+        <span class="tag">C++</span><span class="tag">AI</span><span class="tag">Open World</span>
+      </div>
+      <a href="https://github.com/FiredPhoenixIR/Dungeon_Life_UE" class="project-link" target="_blank">View on GitHub</a>
+    </div>
+
+    <div class="project-card reveal">
+      <div class="project-number">04</div>
+      <div class="project-icon">🗡️</div>
+      <div class="project-title">Stealth Assassination — Motion Warping</div>
+      <div class="project-status"><span class="status-dot private"></span>Private</div>
+      <div class="project-desc">Synchronising two characters using Motion Warping for seamless stealth kills. Custom warp targets, two-person animation blending, and contextual takedown logic.</div>
+      <div class="timeline-tags" style="margin-bottom:20px">
+        <span class="tag">Motion Warping</span><span class="tag">Animation</span><span class="tag">C++</span>
+      </div>
+      <a href="https://github.com/FiredPhoenixIR/" class="project-link" target="_blank">View Profile</a>
+    </div>
+
+    <div class="project-card reveal reveal-delay-1">
+      <div class="project-number">05</div>
+      <div class="project-icon">🏹</div>
+      <div class="project-title">Bow & Arrow System</div>
+      <div class="project-status"><span class="status-dot private"></span>Private</div>
+      <div class="project-desc">Physically-simulated bow mechanics with procedural animation. Draw strength affects trajectory, wind resistance, and impact force. Full IK setup for accurate hand placement.</div>
+      <div class="timeline-tags" style="margin-bottom:20px">
+        <span class="tag">Physics</span><span class="tag">IK</span><span class="tag">Animation</span>
+      </div>
+      <a href="https://github.com/FiredPhoenixIR/" class="project-link" target="_blank">View Profile</a>
+    </div>
+
+  </div>
+</section>
+<div class="section-divider"></div>
+
+<!-- SKILLS -->
+<section id="skills">
+  <div class="section-tag">Expertise</div>
+  <h2 class="section-title reveal">Technical <em>Skills</em></h2>
+  <div class="skills-layout">
+    <div>
+      <div class="skill-group-title reveal">Core Proficiency</div>
+      <div class="skill-bar-item reveal reveal-delay-1">
+        <div class="skill-bar-header">
+          <span class="skill-name">Unreal Engine 5</span>
+          <span class="skill-level">95%</span>
+        </div>
+        <div class="skill-track"><div class="skill-fill" data-width="95"></div></div>
+      </div>
+      <div class="skill-bar-item reveal reveal-delay-2">
+        <div class="skill-bar-header">
+          <span class="skill-name">C++ (Gameplay)</span>
+          <span class="skill-level">92%</span>
+        </div>
+        <div class="skill-track"><div class="skill-fill" data-width="92"></div></div>
+      </div>
+      <div class="skill-bar-item reveal reveal-delay-3">
+        <div class="skill-bar-header">
+          <span class="skill-name">Gameplay Ability System</span>
+          <span class="skill-level">88%</span>
+        </div>
+        <div class="skill-track"><div class="skill-fill" data-width="88"></div></div>
+      </div>
+      <div class="skill-bar-item reveal reveal-delay-4">
+        <div class="skill-bar-header">
+          <span class="skill-name">Multiplayer / Networking</span>
+          <span class="skill-level">85%</span>
+        </div>
+        <div class="skill-track"><div class="skill-fill" data-width="85"></div></div>
+      </div>
+      <div class="skill-bar-item reveal">
+        <div class="skill-bar-header">
+          <span class="skill-name">Blueprints</span>
+          <span class="skill-level">90%</span>
+        </div>
+        <div class="skill-track"><div class="skill-fill" data-width="90"></div></div>
+      </div>
+      <div class="skill-bar-item reveal reveal-delay-1">
+        <div class="skill-bar-header">
+          <span class="skill-name">Animation / Motion Warping</span>
+          <span class="skill-level">80%</span>
+        </div>
+        <div class="skill-track"><div class="skill-fill" data-width="80"></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="skill-group-title reveal">Specialisations</div>
+      <div class="expertise-list">
+        <div class="expertise-item reveal reveal-delay-1">
+          <div class="expertise-name">GAS Architecture</div>
+          <div class="expertise-sub">Abilities · Effects · Cues</div>
+        </div>
+        <div class="expertise-item reveal reveal-delay-2">
+          <div class="expertise-name">Server Rewind</div>
+          <div class="expertise-sub">Lag Compensation</div>
+        </div>
+        <div class="expertise-item reveal reveal-delay-3">
+          <div class="expertise-name">Iris Replication</div>
+          <div class="expertise-sub">Next-Gen Networking</div>
+        </div>
+        <div class="expertise-item reveal reveal-delay-4">
+          <div class="expertise-name">Combat Systems</div>
+          <div class="expertise-sub">Hit Detection · Physics</div>
+        </div>
+        <div class="expertise-item reveal">
+          <div class="expertise-name">MetaSounds</div>
+          <div class="expertise-sub">Dynamic Audio Systems</div>
+        </div>
+        <div class="expertise-item reveal reveal-delay-1">
+          <div class="expertise-name">AI Behaviour</div>
+          <div class="expertise-sub">Behaviour Trees · EQS</div>
+        </div>
+        <div class="expertise-item reveal reveal-delay-2">
+          <div class="expertise-name">Replication</div>
+          <div class="expertise-sub">RPCs · Network Roles</div>
+        </div>
+        <div class="expertise-item reveal reveal-delay-3">
+          <div class="expertise-name">Animation Systems</div>
+          <div class="expertise-sub">IK · State Machines</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="section-divider"></div>
+
+<!-- BLOG -->
+<section id="blog">
+  <div class="section-tag">Knowledge</div>
+  <h2 class="section-title reveal">Technical <em>Articles</em></h2>
+  <div class="blog-grid">
+    <a href="https://firedphoenixir.github.io/ClientPrediction.html" class="blog-card reveal">
+      <div class="blog-tag">Networking</div>
+      <div class="blog-title">Client Prediction in UE5</div>
+      <div class="blog-desc">Deep dive into client-side prediction — how to keep your game feeling responsive while maintaining server authority in multiplayer environments.</div>
+      <div class="blog-read">Read Article</div>
+    </a>
+    <a href="https://firedphoenixir.github.io/ServerRewinding.html" class="blog-card reveal reveal-delay-1">
+      <div class="blog-tag">Networking</div>
+      <div class="blog-title">Server Rewinding</div>
+      <div class="blog-desc">How to implement lag compensation with server rewinding — ensuring hit registration is fair for players across varying network conditions.</div>
+      <div class="blog-read">Read Article</div>
+    </a>
+    <a href="https://firedphoenixir.github.io/Serialization.html" class="blog-card reveal reveal-delay-2">
+      <div class="blog-tag">Systems</div>
+      <div class="blog-title">Serialization in UE4/5</div>
+      <div class="blog-desc">A comprehensive guide to data serialization in Unreal Engine — from FArchive to custom binary formats for save systems and network payloads.</div>
+      <div class="blog-read">Read Article</div>
+    </a>
+  </div>
+</section>
+<div class="section-divider"></div>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="section-tag">Reach Out</div>
+  <h2 class="section-title reveal">Let's <em>Work Together</em></h2>
+  <div class="contact-grid">
+    <div class="contact-info reveal">
+      <p>
+        Open to senior gameplay engineering roles, exciting multiplayer projects, or technical consulting. If you're building something ambitious in UE5, I'd love to hear from you.
+      </p>
+      <a href="mailto:mahdi.sadeghian.tehrani@gmail.com" class="contact-link-item">
+        <div class="contact-link-icon">✉</div>
+        <div>
+          <div class="contact-link-label">Email</div>
+          <div class="contact-link-value">mahdi.sadeghian.tehrani@gmail.com</div>
+        </div>
+      </a>
+      <a href="https://t.me/Mahdi_S_T" class="contact-link-item" target="_blank">
+        <div class="contact-link-icon">✈</div>
+        <div>
+          <div class="contact-link-label">Telegram</div>
+          <div class="contact-link-value">@Mahdi_S_T</div>
+        </div>
+      </a>
+      <a href="https://www.linkedin.com/in/mahdi-sadeghian-tehrani/" class="contact-link-item" target="_blank">
+        <div class="contact-link-icon">in</div>
+        <div>
+          <div class="contact-link-label">LinkedIn</div>
+          <div class="contact-link-value">mahdi-sadeghian-tehrani</div>
+        </div>
+      </a>
+      <a href="https://github.com/FiredPhoenixIR" class="contact-link-item" target="_blank">
+        <div class="contact-link-icon">⌥</div>
+        <div>
+          <div class="contact-link-label">GitHub</div>
+          <div class="contact-link-value">FiredPhoenixIR</div>
+        </div>
+      </a>
+      <div class="contact-availability">
+        <div class="availability-dot">Available for new opportunities</div>
+      </div>
+    </div>
+    <div class="reveal reveal-delay-2">
+      <div class="contact-form">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-input" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Project / Message</label>
+          <textarea class="form-textarea" placeholder="Tell me about your project..."></textarea>
+        </div>
+        <a href="mailto:mahdi.sadeghian.tehrani@gmail.com" class="btn-primary" style="text-align:center; margin-top:8px">
+          <span>Send Message</span>
+        </a>
+      </div>
+    </div>
+  </div>
 </section>
 
-        <!--=================== Contact ====================-->
-        <section id="contact" class="section contact">
-            <div class="container">
-                <div class="d-grid contact__wrapper">
-                    <div class="contact__content">
-                        <h2 class="contact__title">Interested in working together? Let's talk</h2>
-                        <p class="contact__description">
-                            Ready to work together on your next software project? I'd love to hear from you! 
-                            Feel free to get in touch.
-                            Whether you have a specific project in mind or just want to chat about your software development needs , I am here to help.
-                            I will respond to your message as quickly as possible and look forward to connecting with you soon.
-                        </p>
-                    </div>
-                    <div class="contact__btn">
-                        <a href="https://t.me/Mahdi_S_T" class="btn btn--secondary">Get in touch</a>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-    <!--=================== footer ====================-->
-    <footer id="footer" class="footer">
-        <div class="container">
-            <div class="d-grid footer__wrapper">
-                <div class="footer__content">
-                    <h4 class="footer__title">Follow Me</h4>
-                    <ul class="footer__social-list">
-                        <li class="footer__social-item">
-                            <a href="https://api.whatsapp.com/send?phone=+989370364434&text=Hello%2C%20Mahdi" target="_blank" class="footer__social-link">
-                                <i class="ri-whatsapp-fill"></i>
-                            </a>
-                        </li>
-                        <li class="footer__social-item">
-                            <a href="https://www.instagram.com/mahdist_/" target="_blank" class="footer__social-link">
-                                <i class="ri-instagram-fill"></i>
-                            </a>
-                        </li>
-                        <li class="footer__social-item">
-                            <a href="https://www.linkedin.com/in/mahdi-sadeghian-tehrani/" target="_blank" class="footer__social-link">
-                                <i class="ri-linkedin-fill"></i>
-                            </a>
-                        </li>
-                        <li class="footer__social-item">
-                            <a href="https://github.com/FiredPhoenixIR" target="_blank" class="footer__social-link">
-                                <i class="ri-github-fill"></i>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="footer__content">
-                    <h4 class="footer__title">Email Me</h4>
-                    <a href="mailto:mahdi.sadeghian.tehrani@gmail.com" class="footer__contact">mahdi.sadeghian.tehrani@gmail.com</a>
-                </div>
-                <div class="footer__content">
-                    <h4 class="footer__title">Call Me</h4>
-                    <a href="tel:+9719370364434" class="footer__contact">+(971)9370364434</a>
-                </div>
-            </div>
-            <p class="footer__copyright">&copy; 2024 Mahdi Sadeghian Tehrani. All Rights Reserved</p>
-        </div>
-    </footer>
+<!-- FOOTER -->
+<footer>
+  <p>© 2025 <span>Mahdi Sadeghian Tehrani</span>. All rights reserved.</p>
+  <div class="footer-links">
+    <a href="https://github.com/FiredPhoenixIR" target="_blank">GitHub</a>
+    <a href="https://www.linkedin.com/in/mahdi-sadeghian-tehrani/" target="_blank">LinkedIn</a>
+    <a href="https://firedphoenixir.github.io/assets/Mahdi_ST_Resume.pdf" target="_blank">Resume</a>
+  </div>
+</footer>
 
-    <!--=================== SwiperJS  ====================-->
-    <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
+<script>
+// ── CURSOR ──
+const cursor = document.getElementById('cursor');
+const trail = document.getElementById('cursor-trail');
+let mx = 0, my = 0, tx = 0, ty = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx+'px'; cursor.style.top = my+'px'; });
+function animTrail() { tx += (mx-tx)*0.12; ty += (my-ty)*0.12; trail.style.left = tx+'px'; trail.style.top = ty+'px'; requestAnimationFrame(animTrail); }
+animTrail();
+document.querySelectorAll('a, button, .project-card, .blog-card, .expertise-item').forEach(el => {
+  el.addEventListener('mouseenter', () => { cursor.style.transform='translate(-50%,-50%) scale(2.5)'; cursor.style.background='var(--ember)'; trail.style.transform='translate(-50%,-50%) scale(1.5)'; trail.style.borderColor='var(--ember)'; });
+  el.addEventListener('mouseleave', () => { cursor.style.transform='translate(-50%,-50%) scale(1)'; cursor.style.background='var(--fire)'; trail.style.transform='translate(-50%,-50%) scale(1)'; trail.style.borderColor='rgba(255,69,0,0.4)'; });
+});
 
-    <!--=================== ScrollReveal ==================-->
-    <script src="https://unpkg.com/scrollreveal"></script>
+// ── PARTICLES ──
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random()*W; this.y = H + 20;
+    this.vx = (Math.random()-0.5)*0.4; this.vy = -(Math.random()*1.2+0.4);
+    this.size = Math.random()*2.5+0.5;
+    this.life = 1; this.decay = Math.random()*0.006+0.003;
+    this.hue = Math.random()*30+10;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vx += (Math.random()-0.5)*0.05;
+    this.life -= this.decay;
+    if (this.life <= 0 || this.y < -10) this.reset();
+  }
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = this.life * 0.7;
+    ctx.fillStyle = `hsl(${this.hue},100%,60%)`;
+    ctx.shadowBlur = 8; ctx.shadowColor = `hsl(${this.hue},100%,50%)`;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+for (let i = 0; i < 120; i++) {
+  const p = new Particle();
+  p.y = Math.random()*H;
+  p.life = Math.random();
+  particles.push(p);
+}
+function animParticles() {
+  ctx.clearRect(0,0,W,H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animParticles);
+}
+animParticles();
 
-    <!--=================== Main JS ====================-->
-    <script src="assets/js/main.js"></script>
+// ── TYPED TEXT ──
+const phrases = ['C++ Gameplay Engineer', 'GAS Specialist', 'Multiplayer Systems', 'UE5 Developer'];
+let pi = 0, ci = 0, deleting = false;
+const el = document.getElementById('typed-text');
+function type() {
+  const cur = phrases[pi];
+  if (!deleting) {
+    el.textContent = cur.slice(0, ci++);
+    if (ci > cur.length) { deleting = true; setTimeout(type, 1800); return; }
+  } else {
+    el.textContent = cur.slice(0, ci--);
+    if (ci < 0) { deleting = false; pi = (pi+1)%phrases.length; ci = 0; }
+  }
+  setTimeout(type, deleting ? 40 : 70);
+}
+setTimeout(type, 1600);
+
+// ── NAV SCROLL ──
+const nav = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+  // active section
+  const sections = document.querySelectorAll('section[id]');
+  sections.forEach(s => {
+    const top = s.offsetTop - 100;
+    const bottom = top + s.offsetHeight;
+    const link = document.querySelector(`.nav-links a[href="#${s.id}"]`);
+    if (link) link.classList.toggle('active', window.scrollY >= top && window.scrollY < bottom);
+  });
+});
+
+// ── REVEAL ON SCROLL ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── SKILL BARS ──
+const skillObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const fill = e.target;
+      fill.style.width = fill.dataset.width + '%';
+      skillObserver.unobserve(fill);
+    }
+  });
+}, { threshold: 0.3 });
+document.querySelectorAll('.skill-fill').forEach(el => skillObserver.observe(el));
+
+// ── COUNTER ANIMATION ──
+const counterObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const el = e.target;
+      const target = parseInt(el.dataset.count);
+      let cur = 0;
+      const inc = target / 40;
+      const timer = setInterval(() => {
+        cur = Math.min(cur + inc, target);
+        el.textContent = Math.floor(cur) + '+';
+        if (cur >= target) clearInterval(timer);
+      }, 40);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('[data-count]').forEach(el => counterObserver.observe(el));
+</script>
 </body>
-
 </html>
-
