@@ -1,220 +1,1278 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Rewinding System</title>
-    <!-- Include Highlight.js CSS for Visual Studio theme -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/vs2015.min.css">
-    <!-- Include Highlight.js JavaScript library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 20px;
-            color: #333;
-        }
-        h1, h2, h3 {
-            color: #2c3e50;
-        }
-        pre {
-            background-color: #f4f4f4;
-            padding: 1em;
-            border-radius: 4px;
-            overflow-x: auto;
-            border: 1px solid #ddd;
-        }
-        /* Inline code styling */
-        code {
-            background-color: #f4f4f4;
-            padding: 0.2em 0.4em;
-            border-radius: 4px;
-            font-size: 140%;
-            color: #d14;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serialization in Unreal Engine 5 — SaveGame, NetSerialize, Fast Arrays</title>
+  <meta name="description" content="A polished UE5 serialization guide covering FArchive, SaveGame, custom versioning, NetSerialize, and Fast Arrays.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+
+:root {
+  --fire: #FF4500;
+  --ember: #FF8C00;
+  --gold: #FFB347;
+  --dark: #070708;
+  --surface: #0d0d0f;
+  --surface2: #141417;
+  --surface3: #19191d;
+  --border: rgba(255, 69, 0, 0.18);
+  --border-strong: rgba(255, 69, 0, 0.35);
+  --text: #e8e0d8;
+  --muted: #8a817a;
+  --ok: #00ff88;
+  --glow: 0 0 20px rgba(255,69,0,0.35), 0 0 60px rgba(255,69,0,0.08);
+  --glow-sm: 0 0 10px rgba(255,69,0,0.35);
+  --shadow-lg: 0 16px 60px rgba(0,0,0,0.35);
+  --radius: 24px;
+  --radius-sm: 16px;
+  --page-width: 1380px;
+  --content-width: 860px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  line-height: 1.75;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+}
+a { color: inherit; }
+img { max-width: 100%; display: block; }
+code, pre { font-family: 'Share Tech Mono', monospace; }
+
+.page-shell,
+.topbar,
+.hero,
+.main-shell,
+.footer {
+  position: relative;
+  z-index: 1;
+}
+
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--fire), var(--ember), var(--gold));
+  box-shadow: var(--glow-sm);
+  z-index: 250;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(20px);
+  background: rgba(7,7,8,0.82);
+  border-bottom: 1px solid var(--border);
+  z-index: 200;
+}
+.topbar-inner {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  background: rgba(255,69,0,0.08);
+  color: var(--fire);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+}
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.brand-copy strong {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.brand-copy span {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.topbar-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.top-link {
+  text-decoration: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 11px 16px;
+  border: 1px solid transparent;
+  transition: all 0.25s ease;
+}
+.top-link:hover {
+  color: var(--fire);
+}
+.top-link.primary {
+  color: var(--fire);
+  border-color: var(--border-strong);
+  background: rgba(255,69,0,0.08);
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+}
+.top-link.primary:hover {
+  box-shadow: var(--glow-sm);
+}
+
+.hero {
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255,69,0,0.08);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255,69,0,0.18), transparent 32%),
+    radial-gradient(circle at 82% 24%, rgba(255,140,0,0.14), transparent 26%),
+    linear-gradient(180deg, rgba(255,69,0,0.05), transparent 40%);
+  z-index: 0;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,69,0,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,69,0,0.035) 1px, transparent 1px);
+  background-size: 74px 74px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,1), rgba(0,0,0,0.25));
+}
+.hero-inner {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 88px 28px 74px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 420px);
+  gap: 42px;
+  align-items: end;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.30em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.eyebrow::before {
+  content: '';
+  width: 42px;
+  height: 1px;
+  background: var(--fire);
+}
+.hero h1 {
+  margin: 0 0 18px;
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2.6rem, 6vw, 5.5rem);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+.hero h1 span {
+  color: var(--fire);
+  text-shadow: var(--glow);
+}
+.hero-lead {
+  max-width: 800px;
+  margin: 0 0 26px;
+  font-size: 1.18rem;
+  line-height: 1.85;
+  color: var(--muted);
+}
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.button {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+.button.primary {
+  background: var(--fire);
+  color: #080808;
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+}
+.button.primary:hover {
+  box-shadow: var(--glow);
+}
+.button.secondary {
+  border: 1px solid var(--border-strong);
+  color: var(--fire);
+  background: rgba(255,69,0,0.06);
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+}
+.button.secondary:hover {
+  background: rgba(255,69,0,0.1);
+}
+
+.hero-cards {
+  display: grid;
+  gap: 14px;
+}
+.meta-card {
+  background: linear-gradient(180deg, rgba(20,20,23,0.92), rgba(13,13,15,0.94));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+.meta-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--fire), var(--ember), transparent);
+}
+.meta-card-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--fire);
+  margin-bottom: 10px;
+}
+.meta-card-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.meta-card-copy {
+  margin-top: 8px;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.main-shell {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 44px 28px 120px;
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  gap: 34px;
+}
+.sidebar {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  display: grid;
+  gap: 18px;
+}
+.panel {
+  background: linear-gradient(180deg, rgba(20,20,23,0.94), rgba(13,13,15,0.96));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+}
+.panel-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--fire);
+  margin-bottom: 14px;
+}
+.toc {
+  display: grid;
+  gap: 6px;
+}
+.toc a {
+  text-decoration: none;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.98rem;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+.toc a:hover,
+.toc a.active {
+  color: var(--text);
+  background: rgba(255,69,0,0.08);
+  border-color: rgba(255,69,0,0.18);
+}
+.pill-list,
+.check-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pill-list li,
+.check-list li {
+  color: var(--muted);
+  margin: 0 0 10px;
+  padding-left: 18px;
+  position: relative;
+}
+.pill-list li::before,
+.check-list li::before {
+  content: '';
+  position: absolute;
+  top: 0.7em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fire);
+  box-shadow: var(--glow-sm);
+}
+.article {
+  max-width: var(--content-width);
+}
+.section {
+  margin-bottom: 72px;
+}
+.section:last-child {
+  margin-bottom: 0;
+}
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.section-kicker::before {
+  content: '//';
+}
+.article h2 {
+  margin: 0 0 18px;
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.6rem, 2vw, 2.4rem);
+  line-height: 1.15;
+}
+.article h3 {
+  margin: 34px 0 14px;
+  font-family: 'Orbitron', monospace;
+  font-size: 1.06rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+.article p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+.article strong {
+  color: var(--text);
+}
+.article ul,
+.article ol {
+  margin: 0 0 18px 0;
+  padding-left: 24px;
+  color: var(--muted);
+}
+.article li {
+  margin-bottom: 8px;
+}
+.article hr {
+  border: none;
+  border-top: 1px solid rgba(255,69,0,0.10);
+  margin: 28px 0;
+}
+.card-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 24px 0 28px;
+}
+.info-card {
+  background: rgba(255,69,0,0.04);
+  border: 1px solid rgba(255,69,0,0.12);
+  padding: 18px;
+  border-radius: 18px;
+}
+.info-card h4 {
+  margin: 0 0 8px;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.88rem;
+}
+.info-card p {
+  margin: 0;
+  font-size: 0.98rem;
+}
+.callout {
+  margin: 24px 0;
+  padding: 18px 18px 18px 20px;
+  border-left: 3px solid var(--fire);
+  background: rgba(255,69,0,0.05);
+  border-radius: 0 16px 16px 0;
+}
+.callout.note {
+  border-left-color: var(--gold);
+  background: rgba(255,179,71,0.05);
+}
+.callout.ok {
+  border-left-color: var(--ok);
+  background: rgba(0,255,136,0.05);
+}
+.callout-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fire);
+  margin-bottom: 8px;
+}
+.callout.note .callout-title { color: var(--gold); }
+.callout.ok .callout-title { color: var(--ok); }
+
+.comparison {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0 30px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(20,20,23,0.7);
+  border: 1px solid var(--border);
+}
+.comparison th,
+.comparison td {
+  padding: 14px 16px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255,69,0,0.08);
+}
+.comparison th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fire);
+  background: rgba(255,69,0,0.06);
+}
+.comparison tr:last-child td {
+  border-bottom: none;
+}
+
+.code-block {
+  margin: 22px 0 28px;
+  background: #0c0c10;
+  border: 1px solid rgba(255,69,0,0.14);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.code-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,69,0,0.1);
+  background: linear-gradient(180deg, rgba(255,69,0,0.08), rgba(255,69,0,0.02));
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.code-label span:last-child {
+  color: var(--muted);
+}
+pre {
+  margin: 0;
+  padding: 20px;
+  overflow-x: auto;
+  font-size: 0.83rem;
+  line-height: 1.7;
+  color: #f2ede7;
+  background:
+    linear-gradient(180deg, rgba(255,69,0,0.03), transparent 22%),
+    #0c0c10;
+}
+pre code {
+  background: transparent;
+  color: inherit;
+}
+
+.inline-code {
+  display: inline-block;
+  padding: 0.12rem 0.42rem;
+  border-radius: 8px;
+  background: rgba(255,69,0,0.08);
+  border: 1px solid rgba(255,69,0,0.14);
+  color: var(--text);
+  font-size: 0.92em;
+  line-height: 1.3;
+}
+
+.references {
+  display: grid;
+  gap: 10px;
+}
+.references a {
+  display: block;
+  text-decoration: none;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255,69,0,0.05);
+  border: 1px solid rgba(255,69,0,0.1);
+  transition: all 0.2s ease;
+}
+.references a:hover {
+  background: rgba(255,69,0,0.08);
+  border-color: rgba(255,69,0,0.22);
+}
+.references strong {
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.86rem;
+  margin-bottom: 2px;
+}
+.references span {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.footer {
+  border-top: 1px solid rgba(255,69,0,0.10);
+  background: rgba(13,13,15,0.95);
+}
+.footer-inner {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.footer-copy {
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+.footer-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1120px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+  }
+  .main-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    order: -1;
+  }
+  .article {
+    max-width: 100%;
+  }
+}
+@media (max-width: 760px) {
+  body { font-size: 17px; }
+  .topbar-inner,
+  .hero-inner,
+  .main-shell,
+  .footer-inner {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .hero-inner {
+    padding-top: 68px;
+    padding-bottom: 56px;
+  }
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  .comparison {
+    display: block;
+    overflow-x: auto;
+  }
+  .topbar-links {
+    display: none;
+  }
+}
+
+  </style>
 </head>
 <body>
-    <header>
-        <h1>Serialization in Unreal Engine</h1>
-    </header>
-    <div class="container">
-        <section>
-            <h2>1. What is Serialization?</h2>
-            <p>Serialization is the process of converting an object or data structure into a format that can be easily stored or transmitted, and subsequently reconstructed. In Unreal Engine, serialization is often used for:</p>
-            <ul>
-                <li><strong>Saving and loading game states:</strong> Storing the state of a game to disk and reloading it later.</li>
-                <li><strong>Network replication:</strong> Transmitting object states between server and clients.</li>
-                <li><strong>Custom data storage:</strong> Managing custom binary or text formats for configuration files, modding, etc.</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h2>2. UE4/UE5 Serialization System</h2>
-            <p>Unreal Engine uses several classes and methods for serialization, built around Unreal's reflection system. The core class for serialization is <code>FArchive</code>, which provides the basic interface for reading and writing data.</p>
-            
-            <h3>Key Classes and Concepts:</h3>
-            <ul>
-                <li><code>FArchive</code>: The base class for serialization, providing fundamental methods like <code>&lt;&lt;</code> (for serializing individual properties) and <code>Serialize</code>.</li>
-                <li><code>FMemoryWriter / FMemoryReader</code>: Derived from <code>FArchive</code>, these classes are used to serialize to and from memory buffers.</li>
-                <li><code>FObjectAndNameAsStringProxyArchive</code>: A specialized archive for serializing UObjects with reference tracking.</li>
-                <li><code>FBufferArchive</code>: A simple implementation of <code>FArchive</code> that writes to an array of bytes, useful for custom serialization.</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h2>3. Basic Serialization Example</h2>
-            <p>Let’s start with a simple example of serializing a custom struct to a binary format.</p>
-            <div class="example">
-                <pre><code>// Define a simple struct
+  <div class="progress"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html#blog">
+        <div class="brand-mark">MST</div>
+        <div class="brand-copy">
+          <strong>Technical Article</strong>
+          <span>Systems · Serialization</span>
+        </div>
+      </a>
+      <nav class="topbar-links">
+        <a class="top-link" href="index.html#blog">All Articles</a>
+        <a class="top-link" href="#references">References</a>
+        <a class="top-link primary" href="#toc">Jump to Guide</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-inner">
+      <div>
+        <div class="eyebrow">Systems · Unreal Engine 5.7</div>
+        <h1>Serialization in <span>UE5</span></h1>
+        <p class="hero-lead">A modern guide to Unreal Engine serialization that separates <strong>SaveGame</strong>, <strong>custom binary formats</strong>, <strong>network payloads</strong>, and <strong>delta-replicated collections</strong>—with examples that scale much better than the old “just write bytes” approach.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#toc">Start Reading</a>
+          <a class="button secondary" href="index.html#blog">Back to Index</a>
+        </div>
+      </div>
+      <div class="hero-cards">
+        <div class="meta-card">
+  <div class="meta-card-label">Updated For</div>
+  <div class="meta-card-value">UE5.7-era patterns</div>
+  <div class="meta-card-copy">Refreshed around current Epic docs for FArchive, FStructuredArchive, SaveGame, Fast Arrays, and Iris-related notes.</div>
+</div>
+<div class="meta-card">
+  <div class="meta-card-label">Best For</div>
+  <div class="meta-card-value">Save / replicate / migrate state</div>
+  <div class="meta-card-copy">Useful when you are designing persistent runtime data or bandwidth-sensitive network structs.</div>
+</div>
+<div class="meta-card">
+  <div class="meta-card-label">Key APIs</div>
+  <div class="meta-card-value">FArchive · NetSerialize · Fast Arrays</div>
+  <div class="meta-card-copy">The article focuses on the APIs you actually reach for in day-to-day gameplay and systems code.</div>
+</div>
+      </div>
+    </div>
+  </section>
+
+  <main class="main-shell">
+    <aside class="sidebar">
+      <div class="panel" id="toc">
+        <div class="panel-label">Contents</div>
+        <nav class="toc">
+          <a href="#mental-model">1. The mental model</a>
+<a href="#pick-lane">2. Pick the right serialization lane</a>
+<a href="#savegame">3. SaveGame done properly</a>
+<a href="#versioning">4. Custom binary + versioning</a>
+<a href="#netserialize">5. Custom network serialization</a>
+<a href="#fast-arrays">6. Replicating collections efficiently</a>
+<a href="#mistakes">7. Common mistakes</a>
+<a href="#references">8. References</a>
+        </nav>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">At a Glance</div>
+        <ul class="check-list">
+          <li>Explains why SaveGame, replication, and object serialization are related but not interchangeable.</li>
+<li>Adds a versioned binary example instead of only a toy archive example.</li>
+<li>Introduces a proper NetSerialize pattern for compact replicated structs.</li>
+<li>Covers Fast Array replication and the Iris fast-array footnote people often miss.</li>
+        </ul>
+      </div>
+    </aside>
+
+    <article class="article">
+      <section class="section" id="mental-model">
+  <div class="section-kicker">01 · Foundations</div>
+  <h2>The mental model: Unreal has <span>multiple</span> serialization paths</h2>
+  
+<p>The old version treated serialization like one giant bucket. In practice, Unreal has several related but different systems, and the right choice depends on <strong>why</strong> you are writing bytes.</p>
+<div class="card-grid">
+<div class="info-card">
+  <h4>Package / object serialization</h4>
+  <p>Used by the engine to load assets, classes, defaults, and reflected object data.</p>
+</div>
+<div class="info-card">
+  <h4>Save data serialization</h4>
+  <p>Used when you want durable runtime state on disk, usually via <span class='inline-code'>USaveGame</span> or a custom archive.</p>
+</div>
+<div class="info-card">
+  <h4>Network serialization</h4>
+  <p>Used when state crosses the network and every bit matters for bandwidth, determinism, and validation.</p>
+</div>
+<div class="info-card">
+  <h4>Delta / collection serialization</h4>
+  <p>Used when arrays or state sets change over time and you only want to ship the diff.</p>
+</div>
+</div>
+<p><strong>FArchive</strong> sits at the center of most of these flows. It is the base archive type Unreal uses for reading and writing serialized data, and it exposes the common machinery used by object serialization, custom binary blobs, and many network-oriented helpers. <span class="inline-code">FStructuredArchive</span> builds on the same idea but gives you a structured API when you want something less brittle than a raw field order.</p>
+
+<p>The important mindset shift is this: <strong>disk format, replication format, and editor/runtime object serialization are not the same optimization problem.</strong> Disk data usually cares about compatibility and readability of evolution. Network data cares about size, determinism, and replayability. Engine object serialization cares about reflection, references, and compatibility with the UObject ecosystem.</p>
+<div class="callout ok">
+  <div class="callout-title">Rule of thumb</div>
+  <div>Start by naming the destination: <strong>asset/package</strong>, <strong>save file</strong>, or <strong>network payload</strong>. Once that is clear, Unreal’s API choices become much easier.</div>
+</div>
+</section>
+<section class="section" id="pick-lane">
+  <div class="section-kicker">02 · Choosing the path</div>
+  <h2>Pick the right tool before you write code</h2>
+  
+<p>The biggest source of complexity is using a low-level solution when a higher-level one already fits the problem. This table is the fast way to decide.</p>
+
+<table class="comparison">
+  <thead>
+    <tr>
+      <th>Use case</th>
+      <th>Best fit</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Simple persistent player/profile data</td>
+      <td><span class="inline-code">USaveGame</span></td>
+      <td>Lowest friction, integrates cleanly with engine helpers, good for slot-based saves.</td>
+    </tr>
+    <tr>
+      <td>Runtime data blob you fully own</td>
+      <td><span class="inline-code">FArchive</span> + custom versioning</td>
+      <td>Lets you define exactly what goes in and how older data migrates forward.</td>
+    </tr>
+    <tr>
+      <td>Structured, named fields</td>
+      <td><span class="inline-code">FStructuredArchive</span></td>
+      <td>Better fit when you want a structured format instead of a purely positional stream.</td>
+    </tr>
+    <tr>
+      <td>Compact replicated structs</td>
+      <td><span class="inline-code">NetSerialize</span></td>
+      <td>Lets you quantize or pack bits for the network rather than shipping full-precision values.</td>
+    </tr>
+    <tr>
+      <td>Replicated arrays that change over time</td>
+      <td><span class="inline-code">FFastArraySerializer</span></td>
+      <td>Delta replication is usually far cheaper than resending the whole container.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>That last row matters a lot. A replicated inventory, status list, score feed, or ability handle list often looks small early on, but once a multiplayer project grows, “just replicate the whole array” becomes one of those decisions you regret everywhere else.</p>
+
+</section>
+<section class="section" id="savegame">
+  <div class="section-kicker">03 · Persistent data</div>
+  <h2>SaveGame done properly: use the high-level path first</h2>
+  
+<p>If you are saving profile data, unlocked items, options, checkpoint state, or a small amount of runtime progress, <span class="inline-code">USaveGame</span> should be your default starting point. It is simple, readable, and easy to organize around slots.</p>
+<div class="code-block">
+  <div class="code-label"><span>SaveGame example</span><span>UE5 C++</span></div>
+  <pre><code>
 USTRUCT(BlueprintType)
-struct FMyStruct
+struct FInventorySaveEntry
 {
     GENERATED_BODY()
 
-    UPROPERTY()
-    int32 MyInt;
+    UPROPERTY(SaveGame)
+    FPrimaryAssetId ItemId;
 
-    UPROPERTY()
-    float MyFloat;
-
-    UPROPERTY()
-    FString MyString;
-
-    // Implement custom serialization
-    friend FArchive& operator&lt;&lt;(FArchive& Ar, FMyStruct& MyStruct)
-    {
-        Ar &lt;&lt; MyStruct.MyInt;
-        Ar &lt;&lt; MyStruct.MyFloat;
-        Ar &lt;&lt; MyStruct.MyString;
-        return Ar;
-    }
+    UPROPERTY(SaveGame)
+    int32 Quantity = 0;
 };
 
-// Serializing the struct to a file
-void SaveStructToFile(const FString& FilePath, const FMyStruct& Data)
-{
-    // Create a binary archive writer
-    FBufferArchive Archive;
-    Archive &lt;&lt; const_cast&lt;FMyStruct&gt;(Data);
-
-    // Write to disk
-    if (FFileHelper::SaveArrayToFile(Archive, *FilePath))
-    {
-        UE_LOG(LogTemp, Log, TEXT("Saved successfully!"));
-    }
-    Archive.FlushCache();
-    Archive.Empty();
-}
-
-// Deserializing the struct from a file
-bool LoadStructFromFile(const FString& FilePath, FMyStruct& Data)
-{
-    TArray&lt;uint8&gt; BinaryArray;
-    if (FFileHelper::LoadFileToArray(BinaryArray, *FilePath))
-    {
-        FMemoryReader FromBinary = FMemoryReader(BinaryArray, true); // true: Free binary array after read
-        FromBinary.Seek(0);
-        FromBinary &lt;&lt; Data;
-        FromBinary.FlushCache();
-        BinaryArray.Empty();
-        return true;
-    }
-    return false;
-}
-</code></pre>
-            </div>
-        </section>
-        
-        <section>
-            <h2>4. Advanced Serialization Techniques</h2>
-            <h3>4.1. Serializing UObjects</h3>
-            <p>For UObjects, Unreal’s <code>Serialize</code> function is used. This method is automatically called for UObjects when you serialize them using an archive. You can override this function in your custom classes to handle specific serialization logic.</p>
-            <div class="example">
-                <pre><code>class UMyObject : public UObject
+UCLASS()
+class UMySaveGame : public USaveGame
 {
     GENERATED_BODY()
 
 public:
-    UPROPERTY()
-    int32 MyInt;
+    UPROPERTY(SaveGame)
+    FString CurrentMapName;
 
-    UPROPERTY()
-    FString MyString;
+    UPROPERTY(SaveGame)
+    FVector PlayerLocation = FVector::ZeroVector;
 
-    virtual void Serialize(FArchive& Ar) override
+    UPROPERTY(SaveGame)
+    TArray<FInventorySaveEntry> Inventory;
+};
+
+void UMySaveSubsystem::WriteCurrentSave()
+{
+    UMySaveGame* Save = Cast<UMySaveGame>(
+        UGameplayStatics::CreateSaveGameObject(UMySaveGame::StaticClass()));
+    check(Save);
+
+    Save->CurrentMapName = GetWorld()->GetMapName();
+    Save->PlayerLocation = CachedPlayerLocation;
+    Save->Inventory = CachedInventory;
+
+    UGameplayStatics::AsyncSaveGameToSlot(
+        Save,
+        SlotName,
+        0,
+        FAsyncSaveGameToSlotDelegate::CreateUObject(
+            this, &ThisClass::OnSaveFinished));
+}
+</code></pre>
+</div>
+<p>The <span class="inline-code">UPROPERTY(SaveGame)</span> specifier is still worth using because it documents intent and plays nicely with custom save archives that check <span class="inline-code">Ar.IsSaveGame()</span>. The subtle part is that <strong>Epic’s own <span class="inline-code">SaveGameToSlot</span> documentation says the function writes all non-transient properties on the SaveGame object, and the SaveGame flag is not checked there.</strong> That catches a lot of people off guard.</p>
+<div class="callout note">
+  <div class="callout-title">Important nuance</div>
+  <div>Treat <span class='inline-code'>UPROPERTY(SaveGame)</span> as a strong convention and a useful filter for custom save archives, but do not assume <span class='inline-code'>SaveGameToSlot</span> itself uses that flag as its only inclusion rule.</div>
+</div>
+<p>So when should you leave <span class="inline-code">USaveGame</span> behind? Usually when you need one of these:</p>
+<ul>
+  <li>a custom binary layout,</li>
+  <li>explicit version migration logic,</li>
+  <li>very strict control over which fields serialize,</li>
+  <li>or a format shared with backend services, replay tools, or external pipelines.</li>
+</ul>
+
+</section>
+<section class="section" id="versioning">
+  <div class="section-kicker">04 · Binary format</div>
+  <h2>Custom binary + versioning: the part most tutorials skip</h2>
+  
+<p>Raw binary serialization is not hard. <strong>Evolving it safely is the hard part.</strong> If you ever change field order, add a member, or remove one, old data can become garbage unless you version the format deliberately.</p>
+<div class="code-block">
+  <div class="code-label"><span>Versioned custom struct</span><span>FArchive + custom version</span></div>
+  <pre><code>
+namespace WeaponStateVersion
+{
+    const FGuid GUID(0xD59E7D55, 0x44B34B89, 0xA50FA3C1, 0x6B228E30);
+
+    enum Type : int32
     {
-        Super::Serialize(Ar);
+        Initial = 0,
+        AddedMagazineAmmo,
+        Latest = AddedMagazineAmmo
+    };
 
-        Ar &lt;&lt; MyInt;
-        Ar &lt;&lt; MyString;
+    const FCustomVersionRegistration Registration(
+        GUID,
+        Latest,
+        TEXT("WeaponStateVersion"));
+}
+
+USTRUCT()
+struct FWeaponRuntimeState
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    float Heat = 0.0f;
+
+    UPROPERTY()
+    int32 MagazineAmmo = 0;
+
+    bool Serialize(FArchive& Ar)
+    {
+        Ar.UsingCustomVersion(WeaponStateVersion::GUID);
+
+        const int32 Version = Ar.CustomVer(WeaponStateVersion::GUID);
+
+        Ar << Heat;
+
+        if (Version >= WeaponStateVersion::AddedMagazineAmmo)
+        {
+            Ar << MagazineAmmo;
+        }
+        else if (Ar.IsLoading())
+        {
+            MagazineAmmo = 0;
+        }
+
+        return true;
     }
 };
-</code></pre>
-            </div>
-            
-            <h3>4.2. Custom Serialization Formats</h3>
-            <p>If you need to serialize to a custom format (e.g., XML, JSON, or a proprietary binary format), you’ll use a combination of <code>FArchive</code> or <code>FStructuredArchive</code>, custom parsers, and serialization functions.</p>
-            
-            <p><strong>Example: JSON Serialization</strong></p>
-            <div class="example">
-                <pre><code>// JSON Serialization Example
-void SerializeToJson(const FString& FilePath, const FMyStruct& Data)
+
+template<>
+struct TStructOpsTypeTraits<FWeaponRuntimeState>
+    : public TStructOpsTypeTraitsBase2<FWeaponRuntimeState>
 {
-    TSharedPtr&lt;FJsonObject&gt; JsonObject = MakeShareable(new FJsonObject);
-    JsonObject-&gt;SetNumberField(TEXT("MyInt"), Data.MyInt);
-    JsonObject-&gt;SetNumberField(TEXT("MyFloat"), Data.MyFloat);
-    JsonObject-&gt;SetStringField(TEXT("MyString"), Data.MyString);
-
-    FString OutputString;
-    TSharedRef&lt;TJsonWriter&lt;&gt;&gt; Writer = TJsonWriterFactory&lt;&gt;::Create(&OutputString);
-    FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
-
-    FFileHelper::SaveStringToFile(OutputString, *FilePath);
-}
-
-bool DeserializeFromJson(const FString& FilePath, FMyStruct& Data)
-{
-    FString JsonString;
-    if (FFileHelper::LoadFileToString(JsonString, *FilePath))
+    enum
     {
-        TSharedRef&lt;TJsonReader&lt;&gt;&gt; Reader = TJsonReaderFactory&lt;&gt;::Create(JsonString);
-        TSharedPtr&lt;FJsonObject&gt; JsonObject;
-        if (FJsonSerializer::Deserialize(Reader, JsonObject) &amp;&amp; JsonObject.IsValid())
-        {
-            Data.MyInt = JsonObject-&gt;GetIntegerField(TEXT("MyInt"));
-            Data.MyFloat = JsonObject-&gt;GetNumberField(TEXT("MyFloat"));
-            Data.MyString = JsonObject-&gt;GetStringField(TEXT("MyString"));
-            return true;
-        }
+        WithSerializer = true
+    };
+};
+</code></pre>
+</div>
+<p>That version registration gives you a stable branch point when the format changes. It is much safer than “just append the new field and hope all old files disappear soon.”</p>
+<div class="code-block">
+  <div class="code-label"><span>Writing and reading bytes</span><span>Memory archives</span></div>
+  <pre><code>
+bool UMyPersistenceSubsystem::WriteWeaponState(
+    const FWeaponRuntimeState& InState,
+    TArray<uint8>& OutBytes)
+{
+    OutBytes.Reset();
+
+    FMemoryWriter Writer(OutBytes, true);
+    FWeaponRuntimeState MutableCopy = InState;
+    MutableCopy.Serialize(Writer);
+
+    return !Writer.IsError();
+}
+
+bool UMyPersistenceSubsystem::ReadWeaponState(
+    const TArray<uint8>& InBytes,
+    FWeaponRuntimeState& OutState)
+{
+    if (InBytes.IsEmpty())
+    {
+        return false;
     }
-    return false;
+
+    FMemoryReader Reader(InBytes, true);
+    return OutState.Serialize(Reader) && !Reader.IsError();
 }
 </code></pre>
-            </div>
-        </section>
-        
-        <section>
-            <h2>5. Best Practices</h2>
-            <ul>
-                <li><strong>Use UE's Reflection System:</strong> Whenever possible, leverage Unreal’s reflection system (<code>UCLASS</code>, <code>USTRUCT</code>, etc.) as it simplifies serialization and ensures compatibility with UE features like garbage collection and network replication.</li>
-                <li><strong>Versioning:</strong> Always consider future-proofing your serialized data. Add versioning information to your serialized formats to handle changes gracefully.</li>
-                <li><strong>Minimize Data:</strong> Serialize only what’s necessary. Large data sets can increase load times and memory usage, so be judicious about what you serialize.</li>
-                <li><strong>Error Handling:</strong> Implement robust error handling, especially for file operations. Always check the success of serialization operations and manage corrupted or missing data gracefully.</li>
-                <li><strong>Custom Archive Implementation:</strong> If you need specific control over how data is serialized, consider creating your custom archive class by deriving from <code>FArchive</code>.</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h2>6. Conclusion</h2>
-            <p>Serialization in Unreal Engine is a powerful tool that allows developers to save and restore game states, transmit data over the network, and more. By leveraging Unreal's serialization system and following best practices, you can create efficient and maintainable systems for managing your game's data. Always keep in mind the specific needs of your project when choosing the serialization approach, whether it's binary, JSON, or a custom format.</p>
-        </section>
+</div>
+<p>One more design tip: when the layout starts needing names, nested sections, or better long-term maintenance, consider moving that particular format toward <span class="inline-code">FStructuredArchive</span> instead of leaving it as a purely positional byte stream. Positional streams are compact, but they are also easier to break accidentally.</p>
+
+</section>
+<section class="section" id="netserialize">
+  <div class="section-kicker">05 · Network payloads</div>
+  <h2>Custom network serialization: compress what matters</h2>
+  
+<p>Replication is serialization too, but you should think about it differently. On the network, <strong>precision is not free.</strong> If you replicate a struct 20 times per second to multiple clients, a few wasteful fields become an expensive system very quickly.</p>
+
+<p>This is where <span class="inline-code">NetSerialize</span> earns its keep. It lets you explicitly quantize or pack data so you send the information you actually need, not the default in-memory representation of the struct.</p>
+<div class="code-block">
+  <div class="code-label"><span>Compact replicated aim data</span><span>NetSerialize example</span></div>
+  <pre><code>
+USTRUCT()
+struct FReplicatedAimData
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FVector_NetQuantize10 TraceStart;
+
+    UPROPERTY()
+    uint16 PackedYaw = 0;
+
+    UPROPERTY()
+    int16 PackedPitch = 0;
+
+    bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess)
+    {
+        bOutSuccess = true;
+
+        TraceStart.NetSerialize(Ar, Map, bOutSuccess);
+        Ar.SerializeBits(&PackedYaw, 16);
+        Ar.SerializeBits(&PackedPitch, 16);
+
+        return true;
+    }
+
+    void SetFromRotator(const FRotator& InRotation)
+    {
+        PackedYaw = FRotator::CompressAxisToShort(InRotation.Yaw);
+        PackedPitch = FRotator::CompressAxisToShort(InRotation.Pitch);
+    }
+
+    FRotator ToRotator() const
+    {
+        return FRotator(
+            FRotator::DecompressAxisFromShort(PackedPitch),
+            FRotator::DecompressAxisFromShort(PackedYaw),
+            0.0f);
+    }
+};
+
+template<>
+struct TStructOpsTypeTraits<FReplicatedAimData>
+    : public TStructOpsTypeTraitsBase2<FReplicatedAimData>
+{
+    enum
+    {
+        WithNetSerializer = true
+    };
+};
+</code></pre>
+</div>
+<p>That example shows the core pattern:</p>
+<ul>
+  <li>quantized vectors instead of raw <span class="inline-code">FVector</span>,</li>
+  <li>compressed angles instead of full floats,</li>
+  <li>and a tiny serialization function that stays aligned with gameplay needs.</li>
+</ul>
+
+<p>This is also why it is useful to study engine types. For example, Epic’s API docs show that <span class="inline-code">FHitResult</span> advertises <span class="inline-code">WithNetSerializer = true</span>. Engine types that cross the network a lot usually already solve some of the packing problem for you.</p>
+<div class="callout ok">
+  <div class="callout-title">Good target for NetSerialize</div>
+  <div>State that is small, frequently replicated, and easy to quantize: aim data, compact movement inputs, lightweight combat snapshots, or tightly-scoped ability payloads.</div>
+</div>
+<p>What usually does <strong>not</strong> belong here? Big ownership graphs, arbitrary UObject blobs, or state that should really be replicated through normal reflected properties and engine-managed object references.</p>
+
+</section>
+<section class="section" id="fast-arrays">
+  <div class="section-kicker">06 · Collections</div>
+  <h2>Replicating collections efficiently with Fast Arrays</h2>
+  
+<p>Replicated arrays are where networking costs quietly hide. If a list changes one item at a time but you resend the whole thing every update, you are paying for far more data than the player actually changed.</p>
+<div class="code-block">
+  <div class="code-label"><span>Inventory list with Fast Array</span><span>Delta replication pattern</span></div>
+  <pre><code>
+USTRUCT()
+struct FInventoryEntry : public FFastArraySerializerItem
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FName ItemId;
+
+    UPROPERTY()
+    int32 Quantity = 0;
+};
+
+USTRUCT()
+struct FInventoryList : public FFastArraySerializer
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TArray<FInventoryEntry> Entries;
+
+    bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+    {
+        return FFastArraySerializer::FastArrayDeltaSerialize<
+            FInventoryEntry,
+            FInventoryList>(Entries, DeltaParms, *this);
+    }
+
+    void AddOrUpdate(const FName ItemId, const int32 Delta)
+    {
+        for (FInventoryEntry& Entry : Entries)
+        {
+            if (Entry.ItemId == ItemId)
+            {
+                Entry.Quantity += Delta;
+                MarkItemDirty(Entry);
+                return;
+            }
+        }
+
+        FInventoryEntry& NewEntry = Entries.AddDefaulted_GetRef();
+        NewEntry.ItemId = ItemId;
+        NewEntry.Quantity = Delta;
+        MarkItemDirty(NewEntry);
+    }
+
+    void RemoveAt(const int32 Index)
+    {
+        Entries.RemoveAt(Index);
+        MarkArrayDirty();
+    }
+};
+
+template<>
+struct TStructOpsTypeTraits<FInventoryList>
+    : public TStructOpsTypeTraitsBase2<FInventoryList>
+{
+    enum
+    {
+        WithNetDeltaSerializer = true
+    };
+};
+</code></pre>
+</div>
+<p>The three operations that matter most are easy to remember:</p>
+<ul>
+  <li><span class="inline-code">MarkItemDirty</span> when one element changed,</li>
+  <li><span class="inline-code">MarkArrayDirty</span> when array structure changed,</li>
+  <li>and keep the item struct focused so the diff stays small.</li>
+</ul>
+
+<p>If you are moving to Iris, there is one extra footnote worth knowing. Epic’s <span class="inline-code">FIrisFastArraySerializer</span> docs explicitly note that it <strong>does not support local, non-replicated items living in the same array</strong>. That means client-only decorative entries or mixed local/replicated bookkeeping should usually live elsewhere.</p>
+<div class="callout note">
+  <div class="callout-title">Design implication</div>
+  <div>Keep a clear boundary between replicated collection state and local-only presentation state. A UI cache can be local; the authoritative replicated list should stay clean.</div>
+</div>
+</section>
+<section class="section" id="mistakes">
+  <div class="section-kicker">07 · Practical checklist</div>
+  <h2>Common mistakes that make serialization fragile</h2>
+  
+<p>These are the mistakes that show up again and again in real projects:</p>
+<ul>
+  <li><strong>Using full-precision network data everywhere.</strong> It works early, then becomes expensive later.</li>
+  <li><strong>No versioning on custom disk formats.</strong> The first schema change turns old data into a migration problem.</li>
+  <li><strong>Treating SaveGame, replication, and object serialization as interchangeable.</strong> They are related, not identical.</li>
+  <li><strong>Replicating large arrays naïvely.</strong> Fast Arrays usually exist for a reason.</li>
+  <li><strong>Serializing object graphs you do not truly own.</strong> References, soft references, and asset IDs are often safer than raw object state dumps.</li>
+</ul>
+<div class="card-grid">
+<div class="info-card">
+  <h4>Best default for simple persistence</h4>
+  <p>Use <span class='inline-code'>USaveGame</span> and keep the data model explicit.</p>
+</div>
+<div class="info-card">
+  <h4>Best default for bandwidth-sensitive structs</h4>
+  <p>Use <span class='inline-code'>NetSerialize</span> and quantize deliberately.</p>
+</div>
+<div class="info-card">
+  <h4>Best default for mutable replicated lists</h4>
+  <p>Use <span class='inline-code'>FFastArraySerializer</span>.</p>
+</div>
+<div class="info-card">
+  <h4>Best default for evolving binary blobs</h4>
+  <p>Add custom version registration before the first format change, not after.</p>
+</div>
+</div>
+<p>If you keep those boundaries clear, serialization stops feeling like “one mysterious engine feature” and becomes a set of deliberate tools you can combine safely.</p>
+
+</section>
+<section class="section" id="references">
+  <div class="section-kicker">08 · Sources</div>
+  <h2>References and further reading</h2>
+  
+<p>These were the main official docs used to refresh the article and keep the examples aligned with current Unreal Engine guidance.</p>
+<div class="references">
+<a href="https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Core/FArchive" target="_blank" rel="noopener noreferrer">
+  <strong>FArchive</strong>
+  <span>Core archive API used across Unreal serialization.</span>
+</a>
+<a href="https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Core/FStructuredArchive" target="_blank" rel="noopener noreferrer">
+  <strong>FStructuredArchive</strong>
+  <span>Structured archive API for reading and writing hierarchical data.</span>
+</a>
+<a href="https://dev.epicgames.com/documentation/unreal-engine/saving-and-loading-your-game-in-unreal-engine" target="_blank" rel="noopener noreferrer">
+  <strong>Saving and Loading Your Game</strong>
+  <span>Official SaveGame workflow overview.</span>
+</a>
+<a href="https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/UGameplayStatics/SaveGameToSlot" target="_blank" rel="noopener noreferrer">
+  <strong>UGameplayStatics::SaveGameToSlot</strong>
+  <span>Notes that SaveGameToSlot writes all non-transient properties and does not check the SaveGame flag there.</span>
+</a>
+<a href="https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/NetCore/FFastArraySerializer" target="_blank" rel="noopener noreferrer">
+  <strong>FFastArraySerializer</strong>
+  <span>Base type for fast delta replication of arrays.</span>
+</a>
+<a href="https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/IrisCore/FIrisFastArraySerializer" target="_blank" rel="noopener noreferrer">
+  <strong>FIrisFastArraySerializer</strong>
+  <span>Iris-specific fast array notes and limitations.</span>
+</a>
+<a href="https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/TStructOpsTypeTraits_FHitResult_1" target="_blank" rel="noopener noreferrer">
+  <strong>TStructOpsTypeTraits<FHitResult></strong>
+  <span>Reference showing engine types can advertise a custom NetSerializer.</span>
+</a>
+</div>
+</section>
+    </article>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-copy">Rebuilt to match the portfolio’s dark orange article aesthetic while upgrading the content to a much more production-friendly UE5 serialization guide.</div>
+      <div class="footer-links">
+        <a class="button secondary" href="index.html#blog">More Articles</a>
+        <a class="button primary" href="#toc">Back to Top</a>
+      </div>
     </div>
-	
-	<script>
-        // Initialize Highlight.js
-        hljs.highlightAll();
-    </script>
+  </footer>
+
+  <script>
+
+document.addEventListener('DOMContentLoaded', () => {
+  const progress = document.querySelector('.progress');
+  const tocLinks = Array.from(document.querySelectorAll('.toc a'));
+  const sections = tocLinks
+    .map(link => document.querySelector(link.getAttribute('href')))
+    .filter(Boolean);
+
+  const update = () => {
+    const doc = document.documentElement;
+    const scrollTop = doc.scrollTop || document.body.scrollTop;
+    const maxScroll = doc.scrollHeight - doc.clientHeight;
+    const width = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
+    progress.style.width = `${width}%`;
+
+    let activeId = sections[0]?.id;
+    for (const section of sections) {
+      const top = section.getBoundingClientRect().top;
+      if (top <= 140) {
+        activeId = section.id;
+      }
+    }
+    tocLinks.forEach(link => {
+      const active = link.getAttribute('href') === `#${activeId}`;
+      link.classList.toggle('active', active);
+    });
+  };
+
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+});
+
+  </script>
 </body>
 </html>
