@@ -606,19 +606,95 @@
   .nav-links a.active { color: var(--fire); }
 
   /* ── MOBILE ── */
+  /* ── HAMBURGER ── */
+  .hamburger {
+    display: none; flex-direction: column; gap: 5px; cursor: pointer;
+    background: none; border: none; padding: 4px; z-index: 200;
+  }
+  .hamburger span {
+    display: block; width: 24px; height: 2px; background: var(--text);
+    transition: all 0.3s; transform-origin: center;
+  }
+  .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); background: var(--fire); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); background: var(--fire); }
+
+  .mobile-menu {
+    display: none; position: fixed; inset: 0; background: rgba(7,7,8,0.97);
+    backdrop-filter: blur(20px); z-index: 150;
+    flex-direction: column; align-items: center; justify-content: center; gap: 40px;
+  }
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a {
+    font-family: 'Orbitron', monospace; font-size: 1.6rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none;
+    transition: color 0.3s, transform 0.3s;
+    transform: translateY(20px); opacity: 0;
+    animation: fadeUp 0.4s forwards;
+  }
+  .mobile-menu.open a:hover { color: var(--fire); transform: translateX(8px); }
+  .mobile-menu.open a:nth-child(1) { animation-delay: 0.05s; }
+  .mobile-menu.open a:nth-child(2) { animation-delay: 0.1s; }
+  .mobile-menu.open a:nth-child(3) { animation-delay: 0.15s; }
+  .mobile-menu.open a:nth-child(4) { animation-delay: 0.2s; }
+  .mobile-menu.open a:nth-child(5) { animation-delay: 0.25s; }
+  .mobile-menu.open a:nth-child(6) { animation-delay: 0.3s; }
+
   @media (max-width: 900px) {
+    /* cursor off on touch */
+    #cursor, #cursor-trail { display: none; }
+    body { cursor: auto; }
+    a, button { cursor: pointer; }
+
     nav { padding: 16px 24px; }
     nav.scrolled { padding: 12px 24px; }
     .nav-links { display: none; }
-    section { padding: 80px 24px; }
-    .hero-content { padding: 0 24px; }
-    .hero-stats { right: 24px; bottom: 80px; gap: 24px; }
-    .about-grid, .skills-layout, .contact-grid { grid-template-columns: 1fr; gap: 40px; }
-    .timeline::before { left: 100px; }
-    .timeline-item { grid-template-columns: 100px 1fr; }
+    .hamburger { display: flex; }
+
+    section { padding: 72px 24px; }
+    .hero-content { padding: 0 24px; max-width: 100%; }
+
+    /* hero stats: move below CTA instead of absolute */
+    .hero-stats {
+      position: relative; right: auto; bottom: auto;
+      display: flex; justify-content: flex-start;
+      gap: 32px; padding: 0 24px;
+      margin-top: -20px; margin-bottom: 40px;
+    }
+    .stat-num { font-size: 2rem; }
+
+    .about-grid { grid-template-columns: 1fr; gap: 32px; }
+    .about-image-container { width: 140px; }
+    .about-img-frame { width: 140px; height: 170px; }
+
+    .skills-layout { grid-template-columns: 1fr; gap: 40px; }
+    .expertise-list { grid-template-columns: 1fr 1fr; }
+
+    .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+
+    .timeline::before { left: 0; }
+    .timeline-item { grid-template-columns: 1fr; gap: 4px; padding-left: 20px; }
+    .timeline-date { text-align: left; padding-right: 0; font-size: 0.68rem; }
+    .timeline-dot { left: 0; }
+    .timeline-content { padding-left: 0; }
+
     .blog-grid { grid-template-columns: 1fr; }
     .projects-grid { grid-template-columns: 1fr; }
     footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+
+  @media (max-width: 480px) {
+    .hero-name { font-size: 2.6rem; }
+    .section-title { font-size: 1.6rem; }
+    .hero-stats { gap: 20px; }
+    .stat-num { font-size: 1.7rem; }
+    .expertise-list { grid-template-columns: 1fr; }
+    .tech-grid { grid-template-columns: 1fr 1fr; }
+    .hero-cta { flex-direction: column; }
+    .btn-primary, .btn-secondary { text-align: center; }
+    section { padding: 60px 18px; }
+    nav { padding: 14px 18px; }
   }
 </style>
 </head>
@@ -638,7 +714,20 @@
     <li><a href="#blog">Blog</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
+  <button class="hamburger" id="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#about" class="mobile-link">About</a>
+  <a href="#experience" class="mobile-link">Experience</a>
+  <a href="#projects" class="mobile-link">Projects</a>
+  <a href="#skills" class="mobile-link">Skills</a>
+  <a href="#blog" class="mobile-link">Blog</a>
+  <a href="#contact" class="mobile-link">Contact</a>
+</div>
 
 <!-- HERO -->
 <section id="hero">
@@ -1201,6 +1290,22 @@ const counterObserver = new IntersectionObserver(entries => {
   });
 }, { threshold: 0.5 });
 document.querySelectorAll('[data-count]').forEach(el => counterObserver.observe(el));
+
+// ── HAMBURGER ──
+const hamburger = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobile-menu');
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('open');
+  mobileMenu.classList.toggle('open');
+  document.body.style.overflow = mobileMenu.classList.contains('open') ? 'hidden' : '';
+});
+document.querySelectorAll('.mobile-link').forEach(link => {
+  link.addEventListener('click', () => {
+    hamburger.classList.remove('open');
+    mobileMenu.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+});
 </script>
 </body>
 </html>
